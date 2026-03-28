@@ -1,0 +1,19 @@
+{
+  "name": "com.mizotake.syncfreed.runtime.tests",
+  "rootNamespace": "MizoTake.SyncFreeD.Tests.Runtime",
+  "references": [
+    "com.mizotake.syncfreed"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

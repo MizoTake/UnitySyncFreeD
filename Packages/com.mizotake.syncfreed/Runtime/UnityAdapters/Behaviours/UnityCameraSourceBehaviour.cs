@@ -1,0 +1,126 @@
+using MizoTake.SyncFreeD.Core.Models;
+using UnityEngine;
+
+namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
+{
+    public class UnityCameraSourceBehaviour : MonoBehaviour, ICameraFrameProvider
+    {
+        [SerializeField] private string sourceId = "UnityCamera";
+        [SerializeField] private int cameraId = 255;
+        [SerializeField] private Camera targetCamera;
+        [SerializeField] private Transform targetTransform;
+        [SerializeField] private float fallbackFocalLengthMm = 50f;
+        [SerializeField] private float fallbackFocusDistanceMeters = 1f;
+        [SerializeField] private float irisFNumber = 2.8f;
+
+        public string SourceId => sourceId;
+
+        public int CameraId => cameraId;
+
+        public CameraCapabilities Capabilities => CameraCapabilities.PanTilt | CameraCapabilities.Roll | CameraCapabilities.Position | CameraCapabilities.Zoom | CameraCapabilities.Focus | CameraCapabilities.Iris;
+
+        public bool TryGetObservedState(out CameraObservedFrame frame)
+        {
+            return TryGetObservedFrame(out frame);
+        }
+
+        public bool TryGetObservedFrame(out CameraObservedFrame frame)
+        {
+            var transformToUse = targetTransform != null ? targetTransform : transform;
+            var cameraToUse = targetCamera != null ? targetCamera : GetComponent<Camera>();
+            if (transformToUse == null)
+            {
+                frame = default;
+                return false;
+            }
+
+            frame = new CameraObservedFrame
+            {
+                SourceId = sourceId,
+                CameraId = cameraId,
+                Capabilities = CameraCapabilities.PanTilt | CameraCapabilities.Roll | CameraCapabilities.Position | CameraCapabilities.Zoom | CameraCapabilities.Focus | CameraCapabilities.Iris,
+                Pose = CapturePose(transformToUse),
+                Lens = CaptureLens(cameraToUse),
+                Timing = CaptureTiming(),
+                Validity = new ValidityState { IsTrackingValid = true, IsLensValid = true }
+            };
+            return true;
+        }
+
+        public CameraCommandFrame CaptureCommandFrame()
+        {
+            var transformToUse = targetTransform != null ? targetTransform : transform;
+            var cameraToUse = targetCamera != null ? targetCamera : GetComponent<Camera>();
+            return new CameraCommandFrame
+            {
+                SourceId = sourceId,
+                CameraId = cameraId,
+                Pose = CapturePose(transformToUse),
+                Lens = CaptureLens(cameraToUse),
+                Timing = CaptureTiming()
+            };
+        }
+
+        public CameraSyncState CaptureState()
+        {
+            var command = CaptureCommandFrame();
+            var observed = TryGetObservedFrame(out var frame) ? frame : default;
+
+            return new CameraSyncState
+            {
+                SourceId = sourceId,
+                CameraId = cameraId,
+                Command = command.Pose,
+                Predicted = command.Pose,
+                Observed = observed.Pose,
+                Corrected = observed.Pose.TimestampTicks != 0L ? observed.Pose : command.Pose,
+                CommandLens = command.Lens,
+                PredictedLens = command.Lens,
+                ObservedLens = observed.Lens,
+                CorrectedLens = observed.Lens.FocalLengthMm != 0d ? observed.Lens : command.Lens,
+                Lens = observed.Lens.FocalLengthMm != 0d ? observed.Lens : command.Lens,
+                Timing = observed.Timing,
+                Validity = observed.Validity
+            };
+        }
+
+        private LensState CaptureLens(Camera cameraToUse)
+        {
+            return new LensState
+            {
+                IrisFNumber = irisFNumber,
+                FocalLengthMm = cameraToUse != null ? cameraToUse.focalLength : fallbackFocalLengthMm,
+                FocusDistanceMeters = fallbackFocusDistanceMeters
+            };
+        }
+
+        private static TimingState CaptureTiming()
+        {
+            return new TimingState
+            {
+                FrameModulo16 = (ushort)(Time.frameCount & 0x0F)
+            };
+        }
+
+        private static PoseState CapturePose(Transform transformToUse)
+        {
+            var euler = transformToUse.rotation.eulerAngles;
+            return new PoseState
+            {
+                PanDeg = NormalizeSignedAngle(euler.y),
+                TiltDeg = NormalizeSignedAngle(-euler.x),
+                RollDeg = NormalizeSignedAngle(euler.z),
+                Xmm = transformToUse.position.x * 1000d,
+                Ymm = transformToUse.position.z * 1000d,
+                Zmm = transformToUse.position.y * 1000d,
+                TimestampTicks = System.DateTime.UtcNow.Ticks
+            };
+        }
+
+        private static float NormalizeSignedAngle(float angle)
+        {
+            var normalized = Mathf.Repeat(angle + 180f, 360f) - 180f;
+            return normalized;
+        }
+    }
+}

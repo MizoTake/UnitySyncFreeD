@@ -1,0 +1,44 @@
+{
+  "name": "com.mizotake.syncfreed",
+  "version": "0.1.0",
+  "displayName": "SyncFreeD",
+  "description": "Camera sync core and Free-D output package for Unity.",
+  "unity": "2022.3",
+  "keywords": [
+    "free-d",
+    "camera-sync",
+    "virtual-production",
+    "tracking"
+  ],
+  "documentationUrl": "Documentation~/Overview.md",
+  "samples": [
+    {
+      "displayName": "Basic Virtual Camera",
+      "description": "Minimal Unity Camera to Free-D sample.",
+      "path": "Samples~/BasicVirtualCamera"
+    },
+    {
+      "displayName": "PTZ DualDrive Sample",
+      "description": "DualDrive sample with command and observed VISCA bridge targets.",
+      "path": "Samples~/PTZDualDriveSample"
+    },
+    {
+      "displayName": "External Tracker Sample",
+      "description": "External tracker pose to Free-D sample.",
+      "path": "Samples~/ExternalTrackerSample"
+    },
+    {
+      "displayName": "Replay Sample",
+      "description": "Replay keyframe source sample.",
+      "path": "Samples~/ReplaySample"
+    },
+    {
+      "displayName": "Output Inspector Sample",
+      "description": "Packet preview and diagnostics sample.",
+      "path": "Samples~/OutputInspectorSample"
+    }
+  ],
+  "author": {
+    "name": "MizoTake"
+  }
+}
