@@ -16,6 +16,9 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public byte[] LastPacket { get; private set; } = Array.Empty<byte>();
         public string LastPacketHex { get; private set; } = string.Empty;
         public int ReceivedCount { get; private set; }
+        public string LastRemoteEndpoint { get; private set; } = string.Empty;
+        public long LastReceivedAtUtcTicks { get; private set; }
+        public bool IsBound => udpClient != null;
 
         private void OnEnable()
         {
@@ -38,15 +41,21 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 return;
             }
 
-            try
+            while (udpClient != null && udpClient.Available > 0)
             {
-                var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
-                LastPacket = udpClient.Receive(ref remoteEndPoint);
-                LastPacketHex = BitConverter.ToString(LastPacket);
-                ReceivedCount++;
-            }
-            catch (SocketException)
-            {
+                try
+                {
+                    var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+                    LastPacket = udpClient.Receive(ref remoteEndPoint);
+                    LastPacketHex = BitConverter.ToString(LastPacket);
+                    LastRemoteEndpoint = remoteEndPoint.ToString();
+                    LastReceivedAtUtcTicks = DateTime.UtcNow.Ticks;
+                    ReceivedCount++;
+                }
+                catch (SocketException)
+                {
+                    break;
+                }
             }
         }
 

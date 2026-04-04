@@ -1,6 +1,7 @@
 using System;
 using MizoTake.SyncFreeD.Core.Diagnostics;
 using MizoTake.SyncFreeD.Core.Models;
+using MizoTake.SyncFreeD.Networking;
 using MizoTake.SyncFreeD.Core.Sync;
 using MizoTake.SyncFreeD.ScriptableObjects;
 using UnityEngine;
@@ -40,6 +41,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public FirmwareBehaviorProfileAsset FirmwareBehaviorProfileAsset => firmwareBehaviorProfileAsset;
         public LensProfileAsset LensProfileAsset => lensProfileAsset;
         public MountProfileAsset MountProfileAsset => mountProfileAsset;
+        public string FirmwareBehaviorWarning => FirmwareBehaviorProfileValidator.Validate(firmwareBehaviorProfileAsset != null ? firmwareBehaviorProfileAsset.Value : null, outputBehaviour != null ? outputBehaviour.SendMode : PacketSendMode.SingleDestinationUnicast);
+        public bool HasFirmwareBehaviorWarning => !string.IsNullOrEmpty(FirmwareBehaviorWarning);
 
         private void Reset()
         {
@@ -121,7 +124,9 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
             var effectiveTuning = EffectiveTuning ?? new SyncTuningProfile();
             var context = new CameraSyncContext(DateTime.UtcNow.Ticks, observedFrame, sourceProvider.CaptureCommandFrame(), syncMode, effectiveTuning);
-            var state = ApplyOutputDelay(synchronizer.Update(context, outputPoseKind), effectiveTuning.OutputDelayMs);
+            var state = synchronizer.Update(context, outputPoseKind);
+            state = ApplyLensProfile(state);
+            state = ApplyOutputDelay(state, effectiveTuning.OutputDelayMs);
             LastState = state;
             LastDiagnostics = SyncDiagnosticsEvaluator.Evaluate(state);
             if (LastDiagnostics.CorrectionApplied)
@@ -149,6 +154,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             return true;
         }
 
+        private CameraSyncState ApplyLensProfile(in CameraSyncState state)
+        {
+            var profile = lensProfileAsset != null ? lensProfileAsset.Value : null;
+            return LensProfileApplicator.Apply(state, profile);
+        }
+
         private CameraSyncState ApplyOutputDelay(in CameraSyncState state, int outputDelayMs)
         {
             outputDelayCompensator.Push(state.Corrected);
@@ -166,6 +177,11 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (sourceBehaviour == null)
             {
+                sourceBehaviour = GetComponent<CompositeCameraSourceBehaviour>();
+            }
+
+            if (sourceBehaviour == null)
+            {
                 sourceBehaviour = GetComponent<UnityCameraSourceBehaviour>();
             }
 
@@ -177,11 +193,6 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             if (sourceBehaviour == null)
             {
                 sourceBehaviour = GetComponent<ReplayCameraSourceBehaviour>();
-            }
-
-            if (sourceBehaviour == null)
-            {
-                sourceBehaviour = GetComponent<ViscaCameraSourceBehaviour>();
             }
 
             if (outputBehaviour == null)
@@ -197,11 +208,6 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             if (recordingOutputBehaviour == null)
             {
                 recordingOutputBehaviour = GetComponent<RecordingOutputBehaviour>();
-            }
-
-            if (sourceBehaviour is ViscaCameraSourceBehaviour && syncMode == SyncMode.VirtualMaster)
-            {
-                syncMode = SyncMode.DualDrive;
             }
         }
 

@@ -33,11 +33,21 @@ Inspector / Debug Window では次の運用指標を確認できます。
 - `Configured Destinations`
 - `Last Requested Destinations`
 - `Send Success / Failure`
+- `Destination spread (us)`
+- `Destination send order / endpoint / success`
 - `Skipped By Filter`
 - `Multicast Configured`
 
 Editor では multicast 用に次も補助します。
 
 - 利用可能な IPv4 NIC 一覧
+- Bind Address の即時選択
 - Multicast Interface Address の即時選択
+- 複数 NIC 時の Bind / Multicast Interface 明示 warning
 - Bind / Multicast 設定の妥当性 warning
+- Destination Port / Additional Destinations / Camera ID Filter の妥当性 warning
+
+Free-D の受信側では次を扱います。
+
+- `FreeDInputSourceBehaviour`: UDP unicast / multicast 受信、D1 packet parse、camera id filter
+- `FreeDDrivenCameraBehaviour`: 受信した pose を Transform に、lens を Unity Camera の `focalLength` / `focusDistance` に反映

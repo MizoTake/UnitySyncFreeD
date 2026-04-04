@@ -1,5 +1,8 @@
+using System;
+
 namespace MizoTake.SyncFreeD.Core.Models
 {
+    [Serializable]
     public struct LensState
     {
         public double ZoomNormalized;

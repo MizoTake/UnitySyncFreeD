@@ -133,4 +133,112 @@ namespace MizoTake.SyncFreeD.Core.Sync
             };
         }
     }
+
+    public static class LensProfileApplicator
+    {
+        public static CameraSyncState Apply(in CameraSyncState state, LensProfile profile)
+        {
+            if (profile == null)
+            {
+                return state;
+            }
+
+            var adjustedState = state;
+            adjustedState.CommandLens = Apply(state.CommandLens, profile);
+            adjustedState.PredictedLens = Apply(state.PredictedLens, profile);
+            adjustedState.ObservedLens = Apply(state.ObservedLens, profile);
+            adjustedState.CorrectedLens = Apply(state.CorrectedLens, profile);
+            adjustedState.Lens = Apply(state.Lens, profile);
+            return adjustedState;
+        }
+
+        public static LensState Apply(in LensState lens, LensProfile profile)
+        {
+            if (profile == null)
+            {
+                return lens;
+            }
+
+            var adjustedLens = lens;
+            adjustedLens.ZoomNormalized = Clamp01(adjustedLens.ZoomNormalized);
+            adjustedLens.FocusNormalized = Clamp01(adjustedLens.FocusNormalized);
+            if (HasFocalLengthRange(profile))
+            {
+                if (adjustedLens.FocalLengthMm > 0d)
+                {
+                    adjustedLens.FocalLengthMm = Clamp(adjustedLens.FocalLengthMm, profile.MinFocalLengthMm, profile.MaxFocalLengthMm);
+                    adjustedLens.ZoomNormalized = EstimateZoomNormalized(adjustedLens.FocalLengthMm, profile);
+                }
+                else
+                {
+                    adjustedLens.FocalLengthMm = EvaluateFocalLength(adjustedLens.ZoomNormalized, profile);
+                }
+            }
+
+            if (adjustedLens.FocusDistanceMeters <= 0d && profile.FocusCurve != null)
+            {
+                adjustedLens.FocusDistanceMeters = System.Math.Max(0d, profile.FocusCurve.Evaluate(adjustedLens.FocusNormalized));
+            }
+
+            return adjustedLens;
+        }
+
+        private static bool HasFocalLengthRange(LensProfile profile)
+        {
+            return profile != null && profile.MaxFocalLengthMm > profile.MinFocalLengthMm;
+        }
+
+        private static double EvaluateFocalLength(double zoomNormalized, LensProfile profile)
+        {
+            var normalized = Clamp01(zoomNormalized);
+            var focalRangeNormalized = profile.ZoomCurve != null ? Clamp01(profile.ZoomCurve.Evaluate(normalized)) : normalized;
+            return Lerp(profile.MinFocalLengthMm, profile.MaxFocalLengthMm, focalRangeNormalized);
+        }
+
+        private static double EstimateZoomNormalized(double focalLengthMm, LensProfile profile)
+        {
+            var bestNormalized = 0d;
+            var bestDistance = double.MaxValue;
+            for (var step = 0; step <= 100; step++)
+            {
+                var normalized = step / 100d;
+                var candidate = EvaluateFocalLength(normalized, profile);
+                var distance = System.Math.Abs(candidate - focalLengthMm);
+                if (distance >= bestDistance)
+                {
+                    continue;
+                }
+
+                bestDistance = distance;
+                bestNormalized = normalized;
+            }
+
+            return bestNormalized;
+        }
+
+        private static double Clamp(double value, double min, double max)
+        {
+            if (value < min)
+            {
+                return min;
+            }
+
+            if (value > max)
+            {
+                return max;
+            }
+
+            return value;
+        }
+
+        private static double Clamp01(double value)
+        {
+            return Clamp(value, 0d, 1d);
+        }
+
+        private static double Lerp(double min, double max, double t)
+        {
+            return min + ((max - min) * t);
+        }
+    }
 }

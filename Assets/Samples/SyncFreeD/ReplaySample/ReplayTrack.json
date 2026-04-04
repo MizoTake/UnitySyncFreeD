@@ -1,0 +1,22 @@
+{
+  "keyframes": [
+    {
+      "timeSeconds": 0.0,
+      "position": { "x": 0.0, "y": 1.0, "z": -10.0 },
+      "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 },
+      "focalLengthMm": 35.0
+    },
+    {
+      "timeSeconds": 1.0,
+      "position": { "x": 1.0, "y": 1.2, "z": -9.0 },
+      "rotation": { "x": 0.0, "y": 20.0, "z": 0.0 },
+      "focalLengthMm": 40.0
+    },
+    {
+      "timeSeconds": 2.0,
+      "position": { "x": -1.0, "y": 1.1, "z": -8.0 },
+      "rotation": { "x": 0.0, "y": -20.0, "z": 0.0 },
+      "focalLengthMm": 50.0
+    }
+  ]
+}

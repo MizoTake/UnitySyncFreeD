@@ -22,5 +22,47 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
 
             Object.Destroy(replayObject);
         }
+
+        [UnityTest]
+        public IEnumerator LoadReplayData_WhenManualFrameStepEnabled_UsesSelectedFrame()
+        {
+            var replayObject = new GameObject("Replay Step Source");
+            var replay = replayObject.AddComponent<ReplayCameraSourceBehaviour>();
+            SetPrivateField(replay, "manualFrameStep", true);
+
+            Assert.That(replay.LoadReplayData("TimeSeconds,PositionX,PositionY,PositionZ,RotationX,RotationY,RotationZ,FocalLengthMm\n0,0,1,-10,0,0,0,35\n1,1,2,-9,0,45,0,50", ReplayDataFormat.Csv), Is.True);
+
+            yield return null;
+
+            Assert.That(replay.SetFrameIndex(1), Is.True);
+            Assert.That(replay.TryGetObservedFrame(out var frame), Is.True);
+            Assert.That(frame.Pose.PanDeg, Is.EqualTo(45d).Within(0.001d));
+            Assert.That(frame.Lens.FocalLengthMm, Is.EqualTo(50d).Within(0.001d));
+
+            Object.Destroy(replayObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ReloadReplayData_FromJsonTextAsset_ClearsError()
+        {
+            var replayObject = new GameObject("Replay Json Source");
+            var replay = replayObject.AddComponent<ReplayCameraSourceBehaviour>();
+            SetPrivateField(replay, "replayDataAsset", new TextAsset("{\"keyframes\":[{\"TimeSeconds\":0.0,\"Position\":{\"x\":0.0,\"y\":1.0,\"z\":-10.0},\"Rotation\":{\"x\":0.0,\"y\":10.0,\"z\":0.0},\"FocalLengthMm\":35.0},{\"TimeSeconds\":1.0,\"Position\":{\"x\":0.5,\"y\":1.5,\"z\":-9.0},\"Rotation\":{\"x\":0.0,\"y\":20.0,\"z\":0.0},\"FocalLengthMm\":40.0}]}"));
+            SetPrivateField(replay, "replayDataFormat", ReplayDataFormat.Json);
+
+            yield return null;
+
+            Assert.That(replay.ReloadReplayData(), Is.True);
+            Assert.That(replay.LastLoadError, Is.Empty);
+            Assert.That(replay.FrameCount, Is.EqualTo(2));
+
+            Object.Destroy(replayObject);
+        }
+
+        private static void SetPrivateField(Object target, string fieldName, object value)
+        {
+            var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            field.SetValue(target, value);
+        }
     }
 }

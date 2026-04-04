@@ -34,6 +34,8 @@ namespace MizoTake.SyncFreeD.Networking
                 udpClient.Client.ReceiveBufferSize = socketBufferSize;
                 ConfiguredSocketBufferSize = socketBufferSize;
             }
+
+            udpClient.MulticastLoopback = true;
         }
 
         public void Send(byte[] payload, string ipAddress, int port)

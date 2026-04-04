@@ -10,7 +10,7 @@ namespace MizoTake.SyncFreeD.Editor.Setup
         private enum SetupPreset
         {
             BasicVirtualCamera,
-            PTZDualDrive,
+            FreeDController,
             ExternalTracker,
             Replay,
             OutputInspector
@@ -30,10 +30,22 @@ namespace MizoTake.SyncFreeD.Editor.Setup
         private void OnGUI()
         {
             EditorGUILayout.LabelField("SyncFreeD Setup", EditorStyles.boldLabel);
-            setupPreset = (SetupPreset)EditorGUILayout.EnumPopup("Preset", setupPreset);
-            createDirectionalLight = EditorGUILayout.Toggle("Create Directional Light", createDirectionalLight);
-            selectCreatedCamera = EditorGUILayout.Toggle("Select Created Camera", selectCreatedCamera);
-            createProfileAssets = EditorGUILayout.Toggle("Create Profile Assets", createProfileAssets);
+            EditorGUILayout.HelpBox("sample と同じ構成を Scene に作るための画面です。まず preset を選び、必要なら preset Asset も一緒に作成します。", MessageType.Info);
+            setupPreset = (SetupPreset)EditorGUILayout.EnumPopup("作りたい sample", setupPreset);
+            EditorGUILayout.HelpBox(GetPresetDescription(setupPreset), MessageType.None);
+            createDirectionalLight = EditorGUILayout.Toggle("Directional Light を作る", createDirectionalLight);
+            selectCreatedCamera = EditorGUILayout.Toggle("作成後に rig を選択する", selectCreatedCamera);
+            createProfileAssets = EditorGUILayout.Toggle("再利用用の preset Asset も作る", createProfileAssets);
+            if (GUILayout.Button("Open Operator Window"))
+            {
+                Windows.SyncFreeDOperatorWindow.OpenWindow();
+            }
+
+            if (GUILayout.Button("Open Matching Sample Scene"))
+            {
+                Support.SyncFreeDSupportSummary.TryOpenSampleScene(ToSampleId(setupPreset));
+            }
+
             if (GUILayout.Button("Create SyncFreeD Camera Rig"))
             {
                 CreateRig();
@@ -51,6 +63,7 @@ namespace MizoTake.SyncFreeD.Editor.Setup
             {
                 cameraObject.AddComponent<DebugLogOutputBehaviour>();
                 cameraObject.AddComponent<RecordingOutputBehaviour>();
+                cameraObject.AddComponent<FreeDLoopbackReceiverBehaviour>();
             }
 
             cameraObject.AddComponent<SyncFreeDBehaviour>();
@@ -68,7 +81,8 @@ namespace MizoTake.SyncFreeD.Editor.Setup
 
             if (createProfileAssets)
             {
-                EnsureProfileAssets();
+                var assets = EnsureProfileAssets();
+                ApplyProfileAssets(cameraObject, assets);
             }
 
             Undo.RegisterCreatedObjectUndo(cameraObject, "Create SyncFreeD Camera Rig");
@@ -83,8 +97,8 @@ namespace MizoTake.SyncFreeD.Editor.Setup
         {
             switch (setupPreset)
             {
-                case SetupPreset.PTZDualDrive:
-                    return "PTZ DualDrive Camera";
+                case SetupPreset.FreeDController:
+                    return "FreeD Controller Camera";
                 case SetupPreset.ExternalTracker:
                     return "External Tracker Camera";
                 case SetupPreset.Replay:
@@ -97,14 +111,46 @@ namespace MizoTake.SyncFreeD.Editor.Setup
             }
         }
 
+        private static string GetPresetDescription(SetupPreset preset)
+        {
+            switch (preset)
+            {
+                case SetupPreset.FreeDController:
+                    return "キーボードで camera を動かしながら FreeD を確認したい時に使います。";
+                case SetupPreset.OutputInspector:
+                    return "送信先、packet、loopback 受信を確認したい時に使います。";
+                case SetupPreset.ExternalTracker:
+                    return "外部 tracker から姿勢を入れる構成を試したい時に使います。";
+                case SetupPreset.Replay:
+                    return "再生データを FreeD に変換する流れを確認したい時に使います。";
+                case SetupPreset.BasicVirtualCamera:
+                default:
+                    return "最小構成で Unity Camera を FreeD として送る時に使います。";
+            }
+        }
+
+        private static Support.SyncFreeDSampleId ToSampleId(SetupPreset preset)
+        {
+            switch (preset)
+            {
+                case SetupPreset.FreeDController:
+                    return Support.SyncFreeDSampleId.FreeDController;
+                case SetupPreset.OutputInspector:
+                    return Support.SyncFreeDSampleId.OutputInspector;
+                case SetupPreset.ExternalTracker:
+                    return Support.SyncFreeDSampleId.ExternalTracker;
+                case SetupPreset.Replay:
+                    return Support.SyncFreeDSampleId.Replay;
+                case SetupPreset.BasicVirtualCamera:
+                default:
+                    return Support.SyncFreeDSampleId.BasicVirtualCamera;
+            }
+        }
+
         private void AddSourceBehaviour(GameObject cameraObject)
         {
             switch (setupPreset)
             {
-                case SetupPreset.PTZDualDrive:
-                    cameraObject.AddComponent<ViscaCameraSourceBehaviour>();
-                    cameraObject.AddComponent<ViscaTelemetryProviderBehaviour>();
-                    break;
                 case SetupPreset.ExternalTracker:
                     cameraObject.AddComponent<TrackerCameraSourceBehaviour>();
                     break;
@@ -113,36 +159,23 @@ namespace MizoTake.SyncFreeD.Editor.Setup
                     break;
                 case SetupPreset.OutputInspector:
                 case SetupPreset.BasicVirtualCamera:
+                case SetupPreset.FreeDController:
                 default:
                     cameraObject.AddComponent<UnityCameraSourceBehaviour>();
                     break;
+            }
+
+            if (setupPreset == SetupPreset.FreeDController)
+            {
+                cameraObject.AddComponent<FreeDControllerBehaviour>();
             }
         }
 
         private void CreatePresetObjects(GameObject cameraObject)
         {
-            if (setupPreset != SetupPreset.PTZDualDrive)
-            {
-                return;
-            }
-
-            if (cameraObject.transform.Find("VISCA Command Target") == null)
-            {
-                var commandTarget = new GameObject("VISCA Command Target");
-                commandTarget.transform.SetParent(cameraObject.transform, false);
-                commandTarget.transform.localRotation = Quaternion.Euler(0f, 20f, 0f);
-            }
-
-            if (cameraObject.transform.Find("VISCA Observed Target") == null)
-            {
-                var observedTarget = new GameObject("VISCA Observed Target");
-                observedTarget.transform.SetParent(cameraObject.transform, false);
-                observedTarget.transform.localPosition = new Vector3(1f, 0f, 0f);
-                observedTarget.transform.localRotation = Quaternion.Euler(0f, 30f, 0f);
-            }
         }
 
-        private static void EnsureProfileAssets()
+        private static CreatedAssets EnsureProfileAssets()
         {
             const string directoryPath = "Assets/SyncFreeDProfiles";
             if (!AssetDatabase.IsValidFolder(directoryPath))
@@ -150,24 +183,78 @@ namespace MizoTake.SyncFreeD.Editor.Setup
                 AssetDatabase.CreateFolder("Assets", "SyncFreeDProfiles");
             }
 
-            CreateAssetIfMissing<ScriptableObjects.SyncTuningProfileAsset>($"{directoryPath}/DefaultSyncTuningProfile.asset");
-            CreateAssetIfMissing<ScriptableObjects.DeviceProfileAsset>($"{directoryPath}/DefaultDeviceProfile.asset");
-            CreateAssetIfMissing<ScriptableObjects.FirmwareBehaviorProfileAsset>($"{directoryPath}/DefaultFirmwareBehaviorProfile.asset");
-            CreateAssetIfMissing<ScriptableObjects.LensProfileAsset>($"{directoryPath}/DefaultLensProfile.asset");
-            CreateAssetIfMissing<ScriptableObjects.MountProfileAsset>($"{directoryPath}/DefaultMountProfile.asset");
+            var assets = new CreatedAssets
+            {
+                SyncTuningProfile = CreateAssetIfMissing<ScriptableObjects.SyncTuningProfileAsset>($"{directoryPath}/DefaultSyncTuningProfile.asset"),
+                DeviceProfile = CreateAssetIfMissing<ScriptableObjects.DeviceProfileAsset>($"{directoryPath}/DefaultDeviceProfile.asset"),
+                FirmwareBehaviorProfile = CreateAssetIfMissing<ScriptableObjects.FirmwareBehaviorProfileAsset>($"{directoryPath}/DefaultFirmwareBehaviorProfile.asset"),
+                LensProfile = CreateAssetIfMissing<ScriptableObjects.LensProfileAsset>($"{directoryPath}/DefaultLensProfile.asset"),
+                MountProfile = CreateAssetIfMissing<ScriptableObjects.MountProfileAsset>($"{directoryPath}/DefaultMountProfile.asset"),
+                OutputProfile = CreateAssetIfMissing<ScriptableObjects.FreeDUdpOutputProfileAsset>($"{directoryPath}/DefaultFreeDUdpOutputProfile.asset"),
+                ControllerProfile = CreateAssetIfMissing<ScriptableObjects.FreeDControllerProfileAsset>($"{directoryPath}/DefaultFreeDControllerProfile.asset")
+            };
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            return assets;
         }
 
-        private static void CreateAssetIfMissing<T>(string assetPath) where T : ScriptableObject
+        private static T CreateAssetIfMissing<T>(string assetPath) where T : ScriptableObject
         {
-            if (AssetDatabase.LoadAssetAtPath<T>(assetPath) != null)
+            var existing = AssetDatabase.LoadAssetAtPath<T>(assetPath);
+            if (existing != null)
             {
-                return;
+                return existing;
             }
 
             var asset = CreateInstance<T>();
             AssetDatabase.CreateAsset(asset, assetPath);
+            return asset;
+        }
+
+        private static void ApplyProfileAssets(GameObject cameraObject, CreatedAssets assets)
+        {
+            var syncBehaviour = cameraObject.GetComponent<SyncFreeDBehaviour>();
+            if (syncBehaviour != null)
+            {
+                AssignObjectReference(syncBehaviour, "tuningProfileAsset", assets.SyncTuningProfile);
+                AssignObjectReference(syncBehaviour, "deviceProfileAsset", assets.DeviceProfile);
+                AssignObjectReference(syncBehaviour, "firmwareBehaviorProfileAsset", assets.FirmwareBehaviorProfile);
+                AssignObjectReference(syncBehaviour, "lensProfileAsset", assets.LensProfile);
+                AssignObjectReference(syncBehaviour, "mountProfileAsset", assets.MountProfile);
+            }
+
+            var outputBehaviour = cameraObject.GetComponent<FreeDUdpOutputBehaviour>();
+            if (outputBehaviour != null)
+            {
+                outputBehaviour.SetOutputProfileAsset(assets.OutputProfile, true);
+                EditorUtility.SetDirty(outputBehaviour);
+            }
+
+            var controllerBehaviour = cameraObject.GetComponent<FreeDControllerBehaviour>();
+            if (controllerBehaviour != null)
+            {
+                controllerBehaviour.SetProfileAsset(assets.ControllerProfile, true);
+                EditorUtility.SetDirty(controllerBehaviour);
+            }
+        }
+
+        private static void AssignObjectReference(Object target, string propertyName, Object value)
+        {
+            var serializedObject = new SerializedObject(target);
+            serializedObject.FindProperty(propertyName).objectReferenceValue = value;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
+        private sealed class CreatedAssets
+        {
+            public ScriptableObjects.SyncTuningProfileAsset SyncTuningProfile;
+            public ScriptableObjects.DeviceProfileAsset DeviceProfile;
+            public ScriptableObjects.FirmwareBehaviorProfileAsset FirmwareBehaviorProfile;
+            public ScriptableObjects.LensProfileAsset LensProfile;
+            public ScriptableObjects.MountProfileAsset MountProfile;
+            public ScriptableObjects.FreeDUdpOutputProfileAsset OutputProfile;
+            public ScriptableObjects.FreeDControllerProfileAsset ControllerProfile;
         }
     }
 }

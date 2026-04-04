@@ -1,11 +1,12 @@
 using System;
+using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Models;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 {
     [DisallowMultipleComponent]
-    public sealed class TrackerCameraSourceBehaviour : MonoBehaviour, ICameraFrameProvider
+    public sealed class TrackerCameraSourceBehaviour : MonoBehaviour, ICameraFrameProvider, ILensDataSource
     {
         [SerializeField] private string sourceId = "external-tracker";
         [SerializeField] private int cameraId = 2;
@@ -13,6 +14,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private float focalLengthMm = 35f;
         [SerializeField] private float focusDistanceMeters = 2f;
         [SerializeField] private float irisFNumber = 2.8f;
+        [SerializeField] private bool trackingValid = true;
+        [SerializeField] private bool lensValid = true;
 
         public string SourceId => sourceId;
 
@@ -36,7 +39,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Pose = CapturePose(transformToUse),
                 Lens = CaptureLens(),
                 Timing = new TimingState { FrameModulo16 = (ushort)(Time.frameCount & 0x0F) },
-                Validity = new ValidityState { IsTrackingValid = true, IsLensValid = true }
+                Validity = new ValidityState { IsTrackingValid = trackingValid, IsLensValid = lensValid, IsDegraded = !trackingValid || !lensValid, IsFallbackMode = !trackingValid && lensValid }
             };
             return true;
         }
@@ -52,6 +55,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Lens = CaptureLens(),
                 Timing = new TimingState { FrameModulo16 = (ushort)(Time.frameCount & 0x0F) }
             };
+        }
+
+        public bool TryGetLensState(out LensState lens)
+        {
+            lens = CaptureLens();
+            return lensValid;
         }
 
         private LensState CaptureLens()

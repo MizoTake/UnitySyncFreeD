@@ -22,6 +22,7 @@
 - サンプルシーン・テスト・Editor 支援を含む UPM 提供
 
 初版では Free-D D1 出力を主対象とする。
+VISCA 実装は本 package の対象外とし、package 内では実機 client / inquiry / telemetry receiver を提供しない。
 Sony FR7 の公開資料では、Free-D は UDP 送信・D1 メッセージ・29 バイト・ビッグエンディアンで構成されること、ソフトウェアバージョン差により送出可能なメタデータや送信先数が変化することが明記されている。これを実装設計の基準とする。  
 参考: Sony ILME-FR7 free-d integration manual v2.00
 
@@ -34,8 +35,8 @@ Sony FR7 の公開資料では、Free-D は UDP 送信・D1 メッセージ・29
 `SyncFreeD` の目的は次のとおり。
 
 1. Unity 上で扱うカメラ制御・トラッキング入力を統一的に扱えるようにする
-2. PTZ 実機と Unity 仮想カメラの同時駆動・追従・補正を可能にする
-3. PTZ 以外のカメラや外部トラッカーにも同じ同期モデルを適用可能にする
+2. Unity 仮想カメラや外部入力の同時駆動・追従・補正を可能にする
+3. PTZ を含む各種カメラや外部トラッカーにも同じ同期モデルを適用可能にする
 4. 外部システムとの接続のために Free-D 出力を提供する
 5. UPM パッケージとして再利用可能な形で配布する
 6. テスト容易性・保守性・拡張性を高く保つ
@@ -50,34 +51,29 @@ Sony FR7 の公開資料では、Free-D は UDP 送信・D1 メッセージ・29
 - レンズキャリブレーションの GUI 完全自動化
 - Genlock と完全同期した deterministic 出力保証
 - Free-D 受信機能を中心とした汎用トラッキングハブ化
+- VISCA 実機 client の内蔵実装
 
 ---
 
 ## 3. 想定ユースケース
 
-### 3.1 PTZ 実機 + Unity 仮想カメラの同時駆動
-
-- RM-IP500 などのコントローラー入力で PTZ 実機と Unity カメラを同時に駆動
-- 実機への Inquiry またはテレメトリで実測状態を取得
-- Unity 側を補正しながら Free-D を送出
-
-### 3.2 Virtual Camera Only
+### 3.1 Virtual Camera Only
 
 - Unity Camera / CineCamera / 独自 Rig の Transform と Lens 情報から Free-D を生成
 - PTZ 実機を持たないプレビュー・検証環境でも利用できる
 
-### 3.3 外部トラッカー起点
+### 3.2 外部トラッカー起点
 
 - 外部トラッカーから 3DoF / 6DoF の姿勢を取得
 - レンズ情報は別ソースから取得
 - 共通状態へ統合して Free-D 出力
 
-### 3.4 録画済みトラッキングデータ再生
+### 3.3 録画済みトラッキングデータ再生
 
 - JSON / CSV / バイナリなどに記録したトラッキングデータを再生
 - リグ挙動の再現、テスト、デバッグに使用
 
-### 3.5 将来拡張
+### 3.4 将来拡張
 
 - Free-D 以外の出力（OpenTrackIO / 独自 JSON / Record / Debug）へ拡張
 - Free-D 受信ブリッジの追加
@@ -144,7 +140,7 @@ Unity 公式ドキュメントでは、カスタム UPM パッケージについ
 
 ### 4.7 既存資産との整合
 
-`ViscaControlVirtualCam` は、Pure C# コア、VISCA 対応、Inquiry Polling Sync、薄い MonoBehaviour 層、Editor ツール、UPM 配布という本パッケージと親和性の高い構造を持つ。`SyncFreeD` はこれを拡張発展させた構成とする。
+本パッケージは、Pure C# コア、外部 source を差し込める構造、薄い MonoBehaviour 層、Editor ツール、UPM 配布を基本方針とする。特定プロトコル実装を内包せず、同期・補正・出力の責務を中心に拡張可能な構成とする。VISCA についても package 内では concrete 実装を持たない。
 
 ---
 
@@ -228,7 +224,6 @@ Unity 依存を許容するもの:
 - UDP Unicast 送信
 - Camera ID / Destination / Multicast 設計枠
 - Unity Camera Source
-- VISCA Source との接続点
 - Sync Mode
 - Tuning Profile
 - Diagnostics
@@ -242,6 +237,7 @@ Unity 依存を許容するもの:
 - OpenTrackIO 出力
 - 完全なマルチキャスト運用支援 UI
 - すべての PTZ メーカー癖の吸収
+- VISCA 実機 client / inquiry / telemetry receiver
 - 実機 CGI 設定ツール
 - レンズ歪み自動キャリブレーション
 - ネットワーク障害解析ツール一式
@@ -405,7 +401,6 @@ public interface ICameraSource
 ### 9.2 想定ソース
 
 - `UnityCameraSource`
-- `ViscaCameraSource`
 - `TrackerCameraSource`
 - `ReplayCameraSource`
 - `FreeDInputSource`（将来）
@@ -496,7 +491,18 @@ Unity の仮想カメラを真値とする。
 
 ### 11.3 DualDrive
 
-入力を実機と Unity に同時に適用し、最終的には実測値ベースで補正する。
+入力を実機と Unity に同時に適用する。
+操作中は command / predicted を優先して応答性を確保し、停止後は observed を使って corrected へ収束させる。
+
+運用フロー:
+
+- 操作開始で `Driving`
+- 入力停止後は `Settling`
+- 短周期の observed 評価で pose / lens の誤差を確認
+- 閾値内に連続 N 回入ったら `Settled`
+- 再入力で常に `Driving` に戻る
+
+AR 合成では、操作中は predicted 系、着地後は corrected / observed 系を基準とする。
 
 ### 11.4 ExternalTrackingMaster
 
@@ -609,7 +615,6 @@ public sealed class DeviceProfile
 {
     public string DeviceName;
     public CameraCapabilities Capabilities;
-    public bool SupportsInquiry;
     public bool SupportsRoll;
     public bool SupportsPosition;
 }
@@ -670,12 +675,24 @@ public sealed class SyncTuningProfile
     public double SnapThresholdMm;
     public double SnapThresholdZoom;
 
-    public int InquiryIntervalMs;
+    public int IdleToSettleDelayMs;
+    public int SettleIntervalMs;
+    public int SettleTimeoutMs;
+    public int RequiredConsecutiveMatches;
     public int TrackingDelayMs;
     public int OutputDelayMs;
     public int VideoAlignmentDelayMs;
 }
 ```
+
+既定値:
+
+- `IdleToSettleDelayMs = 150`
+- `SettleIntervalMs = 50`
+- `SettleTimeoutMs = 1000`
+- `RequiredConsecutiveMatches = 3`
+
+着地判定の閾値は既定では `SnapThresholdDeg`、`SnapThresholdMm`、`SnapThresholdZoom` を流用する。
 
 ### 14.6 Pure C# 維持のための注意
 
@@ -784,8 +801,10 @@ Core と Unity の橋渡しを行う。
 #### `UnityCameraSourceBehaviour`
 - Camera / Transform から Canonical State 用情報を取得
 
-#### `ViscaCameraSourceBehaviour`
-- 既存 VISCA 実装との橋渡し
+#### `CompositeCameraSourceBehaviour`
+- pose source と lens source を統合
+- fixed camera や lens encoder 併用を扱う
+
 
 #### `FreeDUdpOutputBehaviour`
 - Runtime で UDP 送信を実行
@@ -887,7 +906,6 @@ Packages/com.mizotake.syncfreed
 │     └─ com.mizotake.syncfreed.runtime.tests.asmdef
 └─ Samples~
    ├─ BasicVirtualCamera
-   ├─ PTZDualDriveSample
    ├─ ExternalTrackerSample
    ├─ ReplaySample
    └─ OutputInspectorSample
@@ -931,18 +949,7 @@ UPM の標準導線に従うため、リポジトリ本体には `Samples~` を�
 - 1 つの `FreeDUdpOutputBehaviour`
 - Hex プレビュー UI
 
-### 21.2 PTZDualDriveSample
-
-目的:
-- PTZ 実機と Unity 仮想カメラの同時駆動
-
-内容:
-- VISCA 連携点
-- SyncMode = DualDrive
-- 誤差表示 UI
-- Tuning Profile 適用例
-
-### 21.3 ExternalTrackerSample
+### 21.2 ExternalTrackerSample
 
 目的:
 - 外部トラッカー起点の同期例
@@ -952,7 +959,7 @@ UPM の標準導線に従うため、リポジトリ本体には `Samples~` を�
 - Lens 情報マージ
 - Corrected 状態の確認
 
-### 21.4 ReplaySample
+### 21.3 ReplaySample
 
 目的:
 - 記録データから状態再生
@@ -962,17 +969,37 @@ UPM の標準導線に従うため、リポジトリ本体には `Samples~` を�
 - フレーム送り
 - 出力再現
 
-### 21.5 OutputInspectorSample
+### 21.4 OutputInspectorSample
 
 目的:
 - Free-D 生成結果の確認
 
 内容:
+- Free-D 生成結果の確認
 - D1 29 バイト表示
 - Camera ID
 - Checksum
 - User Area
 - FrameModulo16
+
+### 21.5 FreeDControllerSample
+
+目的:
+- Unity 内で Free-D 操作確認を素早く行う
+
+内容:
+- keyboard controller による camera 操作
+- loopback と diagnostics の同時確認
+- preset 再利用の確認
+
+### 21.6 SharedPresets
+
+目的:
+- sample 間で再利用する送信設定 / 操作設定をまとめる
+
+内容:
+- `LocalLoopbackOutput.asset`
+- `ComfortController.asset`
 
 ---
 
@@ -1041,7 +1068,6 @@ editor.tests -> editor, runtime
 
 ### 23.4 Fake / Mock 戦略
 
-- Fake PTZ source
 - Fake tracker source
 - Fake lens source
 - Fake output sink
@@ -1138,7 +1164,6 @@ Aximmetry の運用知見にならい、UDP/IP を基本とし、専用 LAN・�
 - ズームの見え方差
 - 停止タイミング差
 - ネットワーク遅延
-- Inquiry 遅延
 - 動画と tracking のズレ
 
 ### 26.2 必須パラメータ
@@ -1152,14 +1177,28 @@ Aximmetry の運用知見にならい、UDP/IP を基本とし、専用 LAN・�
 - `SnapThresholdDeg`
 - `SnapThresholdMm`
 - `SnapThresholdZoom`
-- `InquiryIntervalMs`
+- `IdleToSettleDelayMs`
+- `SettleIntervalMs`
+- `SettleTimeoutMs`
+- `RequiredConsecutiveMatches`
 - `TrackingDelayMs`
 - `VideoAlignmentDelayMs`
 
-### 26.3 Inquiry 利用
+### 26.3 Observed 利用
 
-`ViscaControlVirtualCam` にある Inquiry Polling の思想はそのまま参考にする。
-初版では既存実装を直接内包しないとしても、同等の役割を果たせる結線点を設ける。
+observed を返せる source は pose / lens の実測値を使って corrected を更新できる。
+操作停止後は settle 用の短周期評価を行う。
+
+settle 判定:
+
+- `IdleToSettleDelayMs` 経過後に `Settling` へ移行
+- `SettleIntervalMs` ごとに observed を評価
+- pose / lens 誤差が閾値内に `RequiredConsecutiveMatches` 回連続で入ったら `Settled`
+- `SettleTimeoutMs` を超えたら timeout として終了
+
+source 契約:
+
+- observed は `CameraObservedFrame` 相当で pose / lens / timing / validity を返す
 
 ---
 
@@ -1210,8 +1249,6 @@ Aximmetry の運用知見にならい、UDP/IP を基本とし、専用 LAN・�
 ### M3
 
 - DualDrive 対応
-- VISCA bridge point
-- PTZDualDriveSample
 
 ### M4
 
@@ -1253,7 +1290,8 @@ Aximmetry の運用知見にならい、UDP/IP を基本とし、専用 LAN・�
 
 - `SyncFreeDBehaviour`
 - `UnityCameraSourceBehaviour`
-- `ViscaCameraSourceBehaviour`
+- `CompositeCameraSourceBehaviour`
+- `LensEncoderSourceBehaviour`
 - `TrackerCameraSourceBehaviour`
 - `ReplayCameraSourceBehaviour`
 - `FreeDUdpOutputBehaviour`
@@ -1356,8 +1394,3 @@ NIC 指定、固定 IP、マルチキャスト参加、ポート競合回避な�
 
 9. Unreal Engine - Live Link FreeD in Unreal Engine  
    https://dev.epicgames.com/documentation/en-us/unreal-engine/live-link-freed--in-unreal-engine
-
-### 既存資産
-
-10. MizoTake / ViscaControlVirtualCam  
-    https://github.com/MizoTake/ViscaControlVirtualCam/tree/master/Packages/com.mizotake.viscavirtualcam

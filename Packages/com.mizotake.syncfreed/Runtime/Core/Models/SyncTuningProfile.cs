@@ -15,6 +15,10 @@ namespace MizoTake.SyncFreeD.Core.Models
         public double SnapThresholdMm = 100d;
         public double SnapThresholdZoom = 0.1d;
         public int InquiryIntervalMs = 100;
+        public int IdleToSettleDelayMs = 150;
+        public int SettleIntervalMs = 50;
+        public int SettleTimeoutMs = 1000;
+        public int RequiredConsecutiveMatches = 3;
         public int TrackingDelayMs;
         public int OutputDelayMs;
         public int VideoAlignmentDelayMs;

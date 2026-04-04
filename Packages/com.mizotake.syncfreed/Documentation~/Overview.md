@@ -7,7 +7,8 @@
 - Canonical camera state
 - Default synchronizer and corrector
 - Free-D D1 packet builder
-- Unity camera / tracker / replay / VISCA bridge point source behaviours
+- Unity camera / tracker / replay source behaviours
 - UDP output, debug output, recording output
 - Editor inspector, debug window, setup wizard
-- Basic / PTZ DualDrive / ExternalTracker / Replay / OutputInspector sample
+- Basic / ExternalTracker / Replay / OutputInspector / FreeDController sample
+- VISCA 実装は本 package に含めない

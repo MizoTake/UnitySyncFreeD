@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 546f15060d749354ba82b46309ec9d29, type: 3}
+  m_Name: ComfortController
+  m_EditorClassIdentifier: 
+  Value:
+    AllowKeyboardControl: 1
+    UseUnscaledTime: 1
+    MoveSpeedMetersPerSecond: 2
+    RotateSpeedDegreesPerSecond: 60
+    RollSpeedDegreesPerSecond: 45
+    FocalLengthSpeedMmPerSecond: 20
+    FocusDistanceSpeedMetersPerSecond: 1
+    BoostMultiplier: 3

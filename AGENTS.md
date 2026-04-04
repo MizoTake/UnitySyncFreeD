@@ -120,3 +120,4 @@
 - `Testing.md`、`FreeDOutput.md`、`FreeDReadiness.md` の 3 つは実装実態と同期させる。
 - `unicli` の不安定さを前提に、失敗時はすぐに設計判断をせず、再試行してログを確認する。
 - 最終報告では、実際に確認できた `Compile` / `EditMode` / `PlayMode` の結果だけを述べる。
+- PowerShell ではなく cmd.exe を使うこと

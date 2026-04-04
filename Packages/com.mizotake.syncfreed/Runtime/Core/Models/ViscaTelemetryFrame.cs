@@ -1,5 +1,8 @@
+using System;
+
 namespace MizoTake.SyncFreeD.Core.Models
 {
+    [Serializable]
     public struct ViscaTelemetryFrame
     {
         public PoseState ObservedPose;

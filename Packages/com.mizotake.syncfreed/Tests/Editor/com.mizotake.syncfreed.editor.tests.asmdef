@@ -2,7 +2,8 @@
   "name": "com.mizotake.syncfreed.editor.tests",
   "rootNamespace": "MizoTake.SyncFreeD.Tests",
   "references": [
-    "com.mizotake.syncfreed"
+    "com.mizotake.syncfreed",
+    "com.mizotake.syncfreed.editor"
   ],
   "includePlatforms": [
     "Editor"

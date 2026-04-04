@@ -36,6 +36,16 @@
       "displayName": "Output Inspector Sample",
       "description": "Packet preview and diagnostics sample.",
       "path": "Samples~/OutputInspectorSample"
+    },
+    {
+      "displayName": "FreeD Controller Sample",
+      "description": "Keyboard controller sample for Free-D camera operation.",
+      "path": "Samples~/FreeDControllerSample"
+    },
+    {
+      "displayName": "FreeD Receive Sample",
+      "description": "Receive Free-D multicast and drive a CG camera sample.",
+      "path": "Samples~/FreeDReceiveSample"
     }
   ],
   "author": {

@@ -1,9 +1,10 @@
+using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Models;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 {
-    public class UnityCameraSourceBehaviour : MonoBehaviour, ICameraFrameProvider
+    public class UnityCameraSourceBehaviour : MonoBehaviour, ICameraFrameProvider, ILensDataSource
     {
         [SerializeField] private string sourceId = "UnityCamera";
         [SerializeField] private int cameraId = 255;
@@ -12,6 +13,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private float fallbackFocalLengthMm = 50f;
         [SerializeField] private float fallbackFocusDistanceMeters = 1f;
         [SerializeField] private float irisFNumber = 2.8f;
+        [SerializeField] private bool trackingValid = true;
+        [SerializeField] private bool lensValid = true;
 
         public string SourceId => sourceId;
 
@@ -42,7 +45,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Pose = CapturePose(transformToUse),
                 Lens = CaptureLens(cameraToUse),
                 Timing = CaptureTiming(),
-                Validity = new ValidityState { IsTrackingValid = true, IsLensValid = true }
+                Validity = new ValidityState { IsTrackingValid = trackingValid, IsLensValid = lensValid, IsDegraded = !trackingValid || !lensValid, IsFallbackMode = !trackingValid && lensValid }
             };
             return true;
         }
@@ -82,6 +85,13 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Timing = observed.Timing,
                 Validity = observed.Validity
             };
+        }
+
+        public bool TryGetLensState(out LensState lens)
+        {
+            var cameraToUse = targetCamera != null ? targetCamera : GetComponent<Camera>();
+            lens = CaptureLens(cameraToUse);
+            return lensValid;
         }
 
         private LensState CaptureLens(Camera cameraToUse)

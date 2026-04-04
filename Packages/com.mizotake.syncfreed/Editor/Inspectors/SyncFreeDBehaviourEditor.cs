@@ -45,27 +45,27 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            EditorGUILayout.LabelField("Setup", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(sourceBehaviourProperty);
-            EditorGUILayout.PropertyField(outputBehaviourProperty);
-            EditorGUILayout.PropertyField(debugLogOutputBehaviourProperty);
-            EditorGUILayout.PropertyField(recordingOutputBehaviourProperty);
-            EditorGUILayout.PropertyField(syncModeProperty);
-            EditorGUILayout.PropertyField(outputPoseKindProperty);
-            EditorGUILayout.PropertyField(outputTickModeProperty);
+            EditorGUILayout.LabelField("基本設定", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(sourceBehaviourProperty, new GUIContent("入力元 Behaviour"));
+            EditorGUILayout.PropertyField(outputBehaviourProperty, new GUIContent("FreeD 出力 Behaviour"));
+            EditorGUILayout.PropertyField(debugLogOutputBehaviourProperty, new GUIContent("Debug 出力 Behaviour"));
+            EditorGUILayout.PropertyField(recordingOutputBehaviourProperty, new GUIContent("記録出力 Behaviour"));
+            EditorGUILayout.PropertyField(syncModeProperty, new GUIContent("同期方法"));
+            EditorGUILayout.PropertyField(outputPoseKindProperty, new GUIContent("どの姿勢を送るか"));
+            EditorGUILayout.PropertyField(outputTickModeProperty, new GUIContent("送信タイミング"));
             if ((Core.Models.OutputTickMode)outputTickModeProperty.enumValueIndex == Core.Models.OutputTickMode.FixedInterval)
             {
-                EditorGUILayout.PropertyField(fixedIntervalMsProperty);
+                EditorGUILayout.PropertyField(fixedIntervalMsProperty, new GUIContent("一定周期送信(ms)"));
             }
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Profiles", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(tuningProfileAssetProperty);
-            EditorGUILayout.PropertyField(deviceProfileAssetProperty);
-            EditorGUILayout.PropertyField(firmwareBehaviorProfileAssetProperty);
-            EditorGUILayout.PropertyField(lensProfileAssetProperty);
-            EditorGUILayout.PropertyField(mountProfileAssetProperty);
+            EditorGUILayout.LabelField("保存して再利用する設定", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(tuningProfileAssetProperty, new GUIContent("同期 preset Asset"));
+            EditorGUILayout.PropertyField(deviceProfileAssetProperty, new GUIContent("機材 preset Asset"));
+            EditorGUILayout.PropertyField(firmwareBehaviorProfileAssetProperty, new GUIContent("firmware preset Asset"));
+            EditorGUILayout.PropertyField(lensProfileAssetProperty, new GUIContent("レンズ preset Asset"));
+            EditorGUILayout.PropertyField(mountProfileAssetProperty, new GUIContent("設置 preset Asset"));
             EditorGUILayout.PropertyField(tuningProperty, true);
-            EditorGUILayout.PropertyField(logPacketHexProperty);
+            EditorGUILayout.PropertyField(logPacketHexProperty, new GUIContent("Packet Hex を Console に出す"));
             serializedObject.ApplyModifiedProperties();
 
             EditorGUILayout.Space();
@@ -75,6 +75,10 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
         private static void DrawRuntimeStatus(SyncFreeDBehaviour behaviour)
         {
             EditorGUILayout.LabelField("Runtime", EditorStyles.boldLabel);
+            if (behaviour.HasFirmwareBehaviorWarning)
+            {
+                EditorGUILayout.HelpBox(behaviour.FirmwareBehaviorWarning, MessageType.Warning);
+            }
             using (new EditorGUI.DisabledScope(true))
             {
                 EditorGUILayout.TextField("Source ID", behaviour.LastState.SourceId ?? string.Empty);
@@ -109,6 +113,11 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             if (GUILayout.Button("Open Debug Window"))
             {
                 Windows.SyncFreeDDebugWindow.OpenWindow();
+            }
+
+            if (GUILayout.Button("Open Operator Window"))
+            {
+                Windows.SyncFreeDOperatorWindow.OpenWindow();
             }
 
             if (GUILayout.Button("Open Setup Wizard"))

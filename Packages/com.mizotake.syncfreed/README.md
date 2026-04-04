@@ -3,10 +3,13 @@
 Camera sync core and Free-D output package for Unity.
 
 - Runtime Core: canonical state, synchronizer, corrector, Free-D D1 packet builder
-- Unity Adapters: UnityCamera, Tracker, Replay, VISCA bridge point, UDP/debug/recording outputs
+- Unity Adapters: UnityCamera, Tracker, Replay, UDP/debug/recording outputs
 - Editor: custom inspector, debug window, setup wizard
-- Samples: BasicVirtualCamera, PTZDualDriveSample, ExternalTrackerSample, ReplaySample, OutputInspectorSample
+- Samples: BasicVirtualCamera, ExternalTrackerSample, ReplaySample, OutputInspectorSample, FreeDControllerSample
+- Sample Visual Rig: every sample scene includes shared visual markers for movement checks
 - Tests: EditMode and PlayMode
+
+VISCA 実装は本 package に含めません。
 
 Documentation:
 
