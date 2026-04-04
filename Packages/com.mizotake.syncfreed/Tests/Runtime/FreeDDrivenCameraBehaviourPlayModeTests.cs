@@ -43,6 +43,65 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Object.Destroy(cameraObject);
         }
 
+        [UnityTest]
+        public IEnumerator LateUpdate_AppliesFocusDistanceToDepthOfFieldTarget()
+        {
+            const int port = 41023;
+            var cameraObject = new GameObject("Driven Camera With Depth Of Field");
+            var camera = cameraObject.AddComponent<Camera>();
+            var depthOfField = cameraObject.AddComponent<FakeDepthOfFieldComponent>();
+            var source = cameraObject.AddComponent<FreeDInputSourceBehaviour>();
+            var driver = cameraObject.AddComponent<FreeDDrivenCameraBehaviour>();
+            SetPrivateField(source, "listenPort", port);
+            SetPrivateField(driver, "applyFocusDistanceToDepthOfField", true);
+            SetPrivateField(driver, "depthOfFieldTarget", depthOfField);
+            cameraObject.SetActive(false);
+            cameraObject.SetActive(true);
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(CreatePacket(5, 0d, 0d, 0d, 0d, 0d, 1500d, 50d, 7.5d, 2.8d, 3), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilApplied(driver, 60);
+
+            Assert.That(camera.focusDistance, Is.EqualTo(7.5f).Within(0.01f));
+            Assert.That(depthOfField.focusDistance.value, Is.EqualTo(7.5f).Within(0.01f));
+            Assert.That(depthOfField.focusDistance.overrideState, Is.True);
+            Assert.That(driver.LastAppliedDepthOfFieldFocusDistance, Is.EqualTo(7.5f).Within(0.01f));
+
+            Object.Destroy(cameraObject);
+        }
+
+        [UnityTest]
+        public IEnumerator LateUpdate_AppliesFocusDistanceThroughBuiltinProfileStyleTarget()
+        {
+            const int port = 41024;
+            var cameraObject = new GameObject("Driven Camera With Builtin Profile Style Target");
+            cameraObject.AddComponent<Camera>();
+            var target = cameraObject.AddComponent<FakeBuiltinPostProcessTarget>();
+            var source = cameraObject.AddComponent<FreeDInputSourceBehaviour>();
+            var driver = cameraObject.AddComponent<FreeDDrivenCameraBehaviour>();
+            SetPrivateField(source, "listenPort", port);
+            SetPrivateField(driver, "applyFocusDistanceToDepthOfField", true);
+            SetPrivateField(driver, "depthOfFieldTarget", target);
+            cameraObject.SetActive(false);
+            cameraObject.SetActive(true);
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(CreatePacket(6, 0d, 0d, 0d, 0d, 0d, 1500d, 50d, 9.25d, 2.8d, 4), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilApplied(driver, 60);
+
+            Assert.That(target.profile.settings[0].focusDistance.value, Is.EqualTo(9.25f).Within(0.01f));
+            Assert.That(target.profile.settings[0].focusDistance.overrideState, Is.True);
+            Assert.That(driver.LastAppliedDepthOfFieldFocusDistance, Is.EqualTo(9.25f).Within(0.01f));
+
+            Object.Destroy(cameraObject);
+        }
+
         private static byte[] CreatePacket(int cameraId, double panDeg, double tiltDeg, double rollDeg, double xmm, double ymm, double zmm, double focalLengthMm, double focusDistanceMeters, double irisFNumber, ushort frameModulo16)
         {
             var packet = new byte[FreeDPacketBuilder.PacketLength];
@@ -73,6 +132,32 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
 
                 yield return null;
             }
+        }
+
+        private sealed class FakeDepthOfFieldComponent : MonoBehaviour
+        {
+            public FakeFloatParameter focusDistance = new FakeFloatParameter();
+        }
+
+        private sealed class FakeFloatParameter
+        {
+            public bool overrideState;
+            public float value;
+        }
+
+        private sealed class FakeBuiltinPostProcessTarget : MonoBehaviour
+        {
+            public FakeBuiltinPostProcessProfile profile = new FakeBuiltinPostProcessProfile();
+        }
+
+        private sealed class FakeBuiltinPostProcessProfile
+        {
+            public System.Collections.Generic.List<FakeBuiltinDepthOfField> settings = new System.Collections.Generic.List<FakeBuiltinDepthOfField> { new FakeBuiltinDepthOfField() };
+        }
+
+        private sealed class FakeBuiltinDepthOfField
+        {
+            public FakeFloatParameter focusDistance = new FakeFloatParameter();
         }
     }
 }

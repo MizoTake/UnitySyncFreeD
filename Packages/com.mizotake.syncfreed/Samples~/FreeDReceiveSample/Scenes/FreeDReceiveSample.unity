@@ -224,6 +224,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
+  - component: {fileID: 553085806}
   - component: {fileID: 553085811}
   - component: {fileID: 553085810}
   - component: {fileID: 553085809}
@@ -236,6 +237,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &553085806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 553085804}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e18a3783ea049f7b0ceb47eaf654750, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetCamera: {fileID: 553085810}
+  postProcessLayer: {fileID: 0}
+  postProcessVolume: {fileID: 0}
+  profile: {fileID: 0}
+  depthOfField: {fileID: 0}
+  volumePriority: 100
+  enableDepthOfField: 1
+  aperture: 4
+  focalLength: 50
+  kernelSize: 1
 --- !u!114 &553085807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -256,6 +279,8 @@ MonoBehaviour:
   applyLens: 1
   applyToLocalTransform: 0
   forcePhysicalCamera: 1
+  applyFocusDistanceToDepthOfField: 1
+  depthOfFieldTarget: {fileID: 553085806}
 --- !u!114 &553085808
 MonoBehaviour:
   m_ObjectHideFlags: 0

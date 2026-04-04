@@ -14,9 +14,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private bool applyLens = true;
         [SerializeField] private bool applyToLocalTransform;
         [SerializeField] private bool forcePhysicalCamera = true;
+        [SerializeField] private bool applyFocusDistanceToDepthOfField;
+        [SerializeField] private Component depthOfFieldTarget;
 
         public CameraObservedFrame LastAppliedFrame { get; private set; }
         public float LastAppliedFieldOfView { get; private set; }
+        public float LastAppliedDepthOfFieldFocusDistance { get; private set; }
         public ICameraFrameProvider SourceProvider => sourceBehaviour as ICameraFrameProvider;
 
         private void Reset()
@@ -92,6 +95,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 if (frame.Lens.FocusDistanceMeters > 0d)
                 {
                     targetCamera.focusDistance = (float)frame.Lens.FocusDistanceMeters;
+                    if (applyFocusDistanceToDepthOfField)
+                    {
+                        var focusDistanceMeters = (float)frame.Lens.FocusDistanceMeters;
+                        if (DepthOfFieldFocusApplier.TryApply(depthOfFieldTarget, focusDistanceMeters) || DepthOfFieldFocusApplier.TryApply(gameObject, focusDistanceMeters))
+                        {
+                            LastAppliedDepthOfFieldFocusDistance = focusDistanceMeters;
+                        }
+                    }
                 }
             }
 
@@ -115,6 +126,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             {
                 targetCamera = GetComponent<Camera>();
             }
+
+            depthOfFieldTarget ??= FindDepthOfFieldTarget();
+        }
+
+        private Component FindDepthOfFieldTarget()
+        {
+            var components = GetComponents<Component>();
+            for (var i = 0; i < components.Length; i++)
+            {
+                var component = components[i];
+                if (component != null && component.GetType().Name.Contains("DepthOfField", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return component;
+                }
+            }
+
+            return null;
         }
     }
 }
