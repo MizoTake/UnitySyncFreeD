@@ -38,5 +38,10 @@ namespace MizoTake.SyncFreeD.Core.Sync
 
             return selected;
         }
+
+        public void Clear()
+        {
+            history.Clear();
+        }
     }
 }

@@ -32,7 +32,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (logToUnityConsole)
             {
-                Debug.Log(message, this);
+                Debug.Log(message);
             }
         }
     }

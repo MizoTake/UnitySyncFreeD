@@ -1,4 +1,5 @@
 using System;
+using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Diagnostics;
 using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.Networking;
@@ -26,8 +27,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private SyncTuningProfile tuning = new SyncTuningProfile();
         [SerializeField] private bool logPacketHex;
 
-        private readonly CameraSyncEngine synchronizer = new CameraSyncEngine();
-        private readonly DelayCompensator outputDelayCompensator = new DelayCompensator();
+        private readonly ITimestampProvider timestampProvider = new SystemTimestampProvider();
+        private readonly SyncTickProcessor tickProcessor = new SyncTickProcessor();
         private float nextFixedIntervalTime;
 
         public CameraSyncState LastState { get; private set; }
@@ -106,6 +107,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private void OnEnable()
         {
             ResetFixedIntervalClock();
+            tickProcessor.Reset();
         }
 
         private bool Tick()
@@ -123,26 +125,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             var effectiveTuning = EffectiveTuning ?? new SyncTuningProfile();
-            var context = new CameraSyncContext(DateTime.UtcNow.Ticks, observedFrame, sourceProvider.CaptureCommandFrame(), syncMode, effectiveTuning);
-            var state = synchronizer.Update(context, outputPoseKind);
-            state = ApplyLensProfile(state);
-            state = ApplyOutputDelay(state, effectiveTuning.OutputDelayMs);
-            LastState = state;
-            LastDiagnostics = SyncDiagnosticsEvaluator.Evaluate(state);
+            var result = tickProcessor.Process(new SyncTickRequest(timestampProvider.GetTimestampTicks(), observedFrame, sourceProvider.CaptureCommandFrame(), syncMode, outputPoseKind, effectiveTuning, lensProfileAsset != null ? lensProfileAsset.Value : null));
+            LastState = result.State;
+            LastDiagnostics = result.Diagnostics;
             if (LastDiagnostics.CorrectionApplied)
             {
                 CorrectionAppliedCount++;
             }
 
-            var packet = outputBehaviour.BuildPacket(state);
+            var packet = outputBehaviour.BuildPacket(LastState);
             if (debugLogOutputBehaviour != null)
             {
-                debugLogOutputBehaviour.Send(state);
+                debugLogOutputBehaviour.Send(LastState);
             }
 
             if (recordingOutputBehaviour != null)
             {
-                recordingOutputBehaviour.Send(state);
+                recordingOutputBehaviour.Send(LastState);
             }
 
             if (logPacketHex)
@@ -150,27 +149,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Debug.Log(BitConverter.ToString(packet));
             }
 
-            outputBehaviour.Send(state);
+            outputBehaviour.Send(LastState);
             return true;
-        }
-
-        private CameraSyncState ApplyLensProfile(in CameraSyncState state)
-        {
-            var profile = lensProfileAsset != null ? lensProfileAsset.Value : null;
-            return LensProfileApplicator.Apply(state, profile);
-        }
-
-        private CameraSyncState ApplyOutputDelay(in CameraSyncState state, int outputDelayMs)
-        {
-            outputDelayCompensator.Push(state.Corrected);
-            if (outputDelayMs <= 0)
-            {
-                return state;
-            }
-
-            var delayedState = state;
-            delayedState.Corrected = outputDelayCompensator.SampleDelayed(state.Corrected.TimestampTicks, outputDelayMs);
-            return delayedState;
         }
 
         private void ResolveReferences()

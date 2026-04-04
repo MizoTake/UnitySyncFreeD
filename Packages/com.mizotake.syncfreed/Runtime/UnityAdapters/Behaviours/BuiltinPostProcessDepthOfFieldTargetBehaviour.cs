@@ -47,7 +47,10 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private void OnValidate()
         {
             ResolveReferences();
-            EnsureSetup();
+            if (Application.isPlaying)
+            {
+                EnsureSetup();
+            }
         }
 #endif
 
@@ -69,8 +72,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 return false;
             }
 
-            postProcessLayer = EnsureComponent(targetCamera.gameObject, layerType, postProcessLayer);
-            postProcessVolume = EnsureComponent(gameObject, volumeType, postProcessVolume);
+            postProcessLayer = ResolveComponent(targetCamera.gameObject, layerType, postProcessLayer);
+            postProcessVolume = ResolveComponent(gameObject, volumeType, postProcessVolume);
+            if (postProcessLayer == null || postProcessVolume == null)
+            {
+                setupStatus = "既存の PostProcessLayer / PostProcessVolume が見つからないため、自動設定をスキップしました。";
+                return false;
+            }
+
             profile = profile != null && profileType.IsInstanceOfType(profile) ? profile : ScriptableObject.CreateInstance(profileType);
             depthOfField = depthOfField != null && depthOfFieldType.IsInstanceOfType(depthOfField) ? depthOfField : ScriptableObject.CreateInstance(depthOfFieldType);
             EnsureDepthOfFieldInProfile(profile, depthOfField);
@@ -89,15 +98,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
         }
 
-        private static MonoBehaviour EnsureComponent(GameObject targetObject, Type componentType, MonoBehaviour currentComponent)
+        private static MonoBehaviour ResolveComponent(GameObject targetObject, Type componentType, MonoBehaviour currentComponent)
         {
             if (currentComponent != null && componentType.IsInstanceOfType(currentComponent))
             {
                 return currentComponent;
             }
 
-            var existingComponent = targetObject.GetComponent(componentType) as MonoBehaviour;
-            return existingComponent != null ? existingComponent : targetObject.AddComponent(componentType) as MonoBehaviour;
+            return targetObject.GetComponent(componentType) as MonoBehaviour;
         }
 
         private static void EnsureDepthOfFieldInProfile(ScriptableObject targetProfile, ScriptableObject targetDepthOfField)
