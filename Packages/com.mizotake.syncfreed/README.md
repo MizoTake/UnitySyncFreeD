@@ -1,6 +1,6 @@
 # SyncFreeD
 
-Camera sync core and Free-D output package for Unity.
+Free-D only camera sync core and output package for Unity.
 
 - Runtime Core: canonical state, synchronizer, corrector, Free-D D1 packet builder
 - Unity Adapters: UnityCamera, Tracker, Replay, UDP/debug/recording outputs
@@ -8,8 +8,6 @@ Camera sync core and Free-D output package for Unity.
 - Samples: BasicVirtualCamera, ExternalTrackerSample, ReplaySample, OutputInspectorSample, FreeDControllerSample
 - Sample Visual Rig: every sample scene includes shared visual markers for movement checks
 - Tests: EditMode and PlayMode
-
-VISCA 実装は本 package に含めません。
 
 Documentation:
 

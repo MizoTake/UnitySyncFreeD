@@ -19,6 +19,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private bool joinMulticastGroup;
         [SerializeField] private string multicastGroupIpAddress = "239.0.0.1";
         [SerializeField] private string multicastInterfaceAddress = string.Empty;
+        [SerializeField] private MonoBehaviour commandSourceBehaviour;
 
         private readonly FreeDPacketParser packetParser = new FreeDPacketParser();
         private UdpClient udpClient;
@@ -102,6 +103,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public CameraCommandFrame CaptureCommandFrame()
         {
+            var commandSource = ResolveCommandSource();
+            if (commandSource != null)
+            {
+                return commandSource.CaptureCommandFrame();
+            }
+
             return new CameraCommandFrame
             {
                 SourceId = lastFrame.SourceId,
@@ -171,6 +178,16 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 udpClient?.Dispose();
                 udpClient = null;
             }
+        }
+
+        private ICameraFrameProvider ResolveCommandSource()
+        {
+            if (commandSourceBehaviour is ICameraFrameProvider commandSource && !ReferenceEquals(commandSource, this))
+            {
+                return commandSource;
+            }
+
+            return null;
         }
     }
 }

@@ -69,6 +69,8 @@
 
 - Free-D D1 packet builder と UDP 送信の中核
 - SyncMode 切り替えと source ごとの同期経路
+- Free-D input source で command source を分離し、controller command と real camera observed を併用可能
+- `DualDrive` で input idle 後に observed へ最終着地
 - Free-D packet preview / diagnostics / setup wizard / samples
 - UPM package layout, asmdef, samples, docs, tests
 
@@ -76,7 +78,6 @@
 
 - multicast の運用支援 UI
 - VISCA は package の実装対象外
-- lens 差分は state と diagnostics まで実装済みだが、実機 source 側の command / observed lens 分離はまだ薄い
 
 ### 未完了
 
@@ -86,7 +87,7 @@
 
 ### P1
 
-- Free-D 同期品質の確認用に、command と observed の lens 差分を PlayMode で再現するテストを維持する
+- Free-D observed stream の on-demand 開始要求を追加する場合は、D0 start/stop の実機相互接続 test を追加する
 
 ### P2
 

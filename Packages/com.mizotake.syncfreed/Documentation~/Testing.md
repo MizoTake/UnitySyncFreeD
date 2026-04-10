@@ -7,5 +7,5 @@ Unity Test Runner を前提にしています。
 
 最近の確認結果:
 
-- EditMode: 107 passed
-- PlayMode: 41 passed
+- EditMode: 108 passed
+- PlayMode: 42 passed
