@@ -53,6 +53,38 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             Assert.That(buffer[28], Is.EqualTo(checksum));
         }
 
+        [Test]
+        public void Build_UsesFallbackLensValuesWhenCorrectedLensIsPartial()
+        {
+            var builder = new FreeDPacketBuilder();
+            var state = new CameraSyncState
+            {
+                CameraId = 7,
+                Corrected = new PoseState(),
+                Lens = new LensState
+                {
+                    FocalLengthMm = 35d,
+                    FocusDistanceMeters = 4d,
+                    IrisFNumber = 2.8d
+                },
+                CorrectedLens = new LensState
+                {
+                    FocusDistanceMeters = 7.5d
+                },
+                Timing = new TimingState
+                {
+                    FrameModulo16 = 2
+                }
+            };
+            var buffer = new byte[FreeDPacketBuilder.PacketLength];
+
+            builder.Build(state, buffer);
+
+            Assert.That(ReadUInt24(buffer, 20), Is.EqualTo(FreeDEncoding.EncodeZoom24(35d)));
+            Assert.That(ReadUInt24(buffer, 23), Is.EqualTo(FreeDEncoding.EncodeFocus24(7.5d)));
+            Assert.That(ReadUInt16(buffer, 26), Is.EqualTo(FreeDEncoding.EncodeUserArea(2.8d, 2)));
+        }
+
         private static CameraSyncState CreateState()
         {
             return new CameraSyncState

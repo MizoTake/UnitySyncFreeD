@@ -26,8 +26,9 @@ namespace MizoTake.SyncFreeD.Core.Sync
             var observedPose = observedFrame?.Pose ?? commandPose;
             var predictedPose = commandPose;
             var correctedPose = SelectCorrectedPose(context.SyncMode, predictedPose, observedPose, observedFrame.HasValue, context.Tuning);
-            var commandLens = commandFrame?.Lens ?? observedFrame?.Lens ?? default;
-            var observedLens = observedFrame?.Lens ?? commandLens;
+            var fallbackObservedLens = observedFrame?.Lens ?? default;
+            var commandLens = commandFrame.HasValue ? LensStateUtility.MergePhysicalValues(commandFrame.Value.Lens, fallbackObservedLens) : fallbackObservedLens;
+            var observedLens = observedFrame.HasValue ? LensStateUtility.MergePhysicalValues(observedFrame.Value.Lens, commandLens) : commandLens;
             var predictedLens = commandLens;
             var correctedLens = SelectCorrectedLens(context.SyncMode, predictedLens, observedLens, observedFrame.HasValue, context.Tuning);
             return new CameraSyncState
@@ -70,10 +71,10 @@ namespace MizoTake.SyncFreeD.Core.Sync
             {
                 case SyncMode.VirtualMaster:
                 case SyncMode.ReplayMaster:
-                    return predictedLens;
+                    return LensStateUtility.MergePhysicalValues(predictedLens, observedLens);
                 case SyncMode.RealMaster:
                 case SyncMode.ExternalTrackingMaster:
-                    return hasObservedFrame ? observedLens : predictedLens;
+                    return hasObservedFrame ? LensStateUtility.MergePhysicalValues(observedLens, predictedLens) : predictedLens;
                 case SyncMode.DualDrive:
                 default:
                     return hasObservedFrame ? CorrectLens(predictedLens, observedLens, tuning) : predictedLens;
@@ -88,7 +89,7 @@ namespace MizoTake.SyncFreeD.Core.Sync
             corrected.FocalLengthMm = CorrectLinear(predictedLens.FocalLengthMm, observedLens.FocalLengthMm, CalculateFocalLengthSnapThreshold(predictedLens, observedLens, tuning.SnapThresholdZoom), tuning.ZoomCorrectionGain);
             corrected.FocusDistanceMeters = CorrectLinear(predictedLens.FocusDistanceMeters, observedLens.FocusDistanceMeters, System.Math.Max(0.001d, tuning.SnapThresholdZoom), tuning.ZoomCorrectionGain);
             corrected.IrisFNumber = observedLens.IrisFNumber != 0d ? observedLens.IrisFNumber : predictedLens.IrisFNumber;
-            return corrected;
+            return LensStateUtility.MergePhysicalValues(corrected, predictedLens);
         }
 
         private static double CorrectLinear(double predicted, double observed, double snapThreshold, double gain)

@@ -11,28 +11,28 @@ namespace MizoTake.SyncFreeD.Core.Sync
             {
                 case OutputPoseKind.Command:
                     selectedState.Corrected = state.Command;
-                    selectedState.CorrectedLens = state.CommandLens;
-                    selectedState.Lens = state.CommandLens;
+                    selectedState.CorrectedLens = LensStateUtility.MergePhysicalValues(state.CommandLens, state.Lens);
+                    selectedState.Lens = selectedState.CorrectedLens;
                     break;
                 case OutputPoseKind.Predicted:
                     selectedState.Corrected = state.Predicted;
-                    selectedState.CorrectedLens = state.PredictedLens;
-                    selectedState.Lens = state.PredictedLens;
+                    selectedState.CorrectedLens = LensStateUtility.MergePhysicalValues(state.PredictedLens, state.Lens);
+                    selectedState.Lens = selectedState.CorrectedLens;
                     break;
                 case OutputPoseKind.Observed:
                     selectedState.Corrected = state.Observed;
-                    selectedState.CorrectedLens = state.ObservedLens;
-                    selectedState.Lens = state.ObservedLens;
+                    selectedState.CorrectedLens = LensStateUtility.MergePhysicalValues(state.ObservedLens, state.PredictedLens);
+                    selectedState.Lens = selectedState.CorrectedLens;
                     break;
                 case OutputPoseKind.Blended:
                     selectedState.Corrected = StateInterpolator.Lerp(state.Predicted, state.Observed, 0.5d);
-                    selectedState.CorrectedLens = state.ObservedLens.FocalLengthMm != 0d ? state.ObservedLens : state.PredictedLens;
+                    selectedState.CorrectedLens = LensStateUtility.MergePhysicalValues(state.ObservedLens, state.PredictedLens);
                     selectedState.Lens = selectedState.CorrectedLens;
                     break;
                 case OutputPoseKind.Corrected:
                 default:
                     selectedState.Corrected = state.Corrected;
-                    selectedState.CorrectedLens = state.CorrectedLens.FocalLengthMm != 0d ? state.CorrectedLens : state.Lens;
+                    selectedState.CorrectedLens = LensStateUtility.MergePhysicalValues(state.CorrectedLens, state.Lens);
                     selectedState.Lens = selectedState.CorrectedLens;
                     break;
             }

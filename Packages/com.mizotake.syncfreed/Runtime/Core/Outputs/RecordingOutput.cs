@@ -27,7 +27,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
 
         public static string ToCsvLine(in CameraSyncState state)
         {
-            var outputLens = state.CorrectedLens.FocalLengthMm != 0d ? state.CorrectedLens : state.Lens;
+            var outputLens = LensStateUtility.MergePhysicalValues(state.CorrectedLens, state.Lens);
             return string.Format(CultureInfo.InvariantCulture, "{0},{1},{2:F6},{3:F6},{4:F6},{5:F3},{6:F3},{7:F3},{8:F3}", state.SourceId ?? string.Empty, state.CameraId, state.Corrected.PanDeg, state.Corrected.TiltDeg, state.Corrected.RollDeg, state.Corrected.Xmm, state.Corrected.Ymm, state.Corrected.Zmm, outputLens.FocalLengthMm);
         }
     }

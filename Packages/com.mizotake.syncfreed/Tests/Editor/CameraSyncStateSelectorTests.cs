@@ -43,5 +43,30 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             Assert.That(selected.Corrected.PanDeg, Is.EqualTo(4d).Within(0.0001d));
             Assert.That(selected.Corrected.Xmm, Is.EqualTo(200d).Within(0.0001d));
         }
+
+        [Test]
+        public void SelectOutputPose_InCorrectedMode_MergesPartialCorrectedLensWithFallbackLens()
+        {
+            var state = new CameraSyncState
+            {
+                Corrected = new PoseState { PanDeg = 4d },
+                CorrectedLens = new LensState { FocusDistanceMeters = 7.5d },
+                Lens = new LensState
+                {
+                    FocalLengthMm = 50d,
+                    FocusDistanceMeters = 3d,
+                    IrisFNumber = 2.8d
+                }
+            };
+
+            var selected = CameraSyncStateSelector.SelectOutputPose(state, OutputPoseKind.Corrected);
+
+            Assert.That(selected.CorrectedLens.FocalLengthMm, Is.EqualTo(50d).Within(0.0001d));
+            Assert.That(selected.CorrectedLens.FocusDistanceMeters, Is.EqualTo(7.5d).Within(0.0001d));
+            Assert.That(selected.CorrectedLens.IrisFNumber, Is.EqualTo(2.8d).Within(0.0001d));
+            Assert.That(selected.Lens.FocalLengthMm, Is.EqualTo(50d).Within(0.0001d));
+            Assert.That(selected.Lens.FocusDistanceMeters, Is.EqualTo(7.5d).Within(0.0001d));
+            Assert.That(selected.Lens.IrisFNumber, Is.EqualTo(2.8d).Within(0.0001d));
+        }
     }
 }

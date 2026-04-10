@@ -12,7 +12,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
 
         public int Build(in CameraSyncState state, Span<byte> destination)
         {
-            var outputLens = state.CorrectedLens.FocalLengthMm != 0d || state.CorrectedLens.FocusDistanceMeters != 0d || state.CorrectedLens.IrisFNumber != 0d ? state.CorrectedLens : state.Lens;
+            var outputLens = LensStateUtility.MergePhysicalValues(state.CorrectedLens, state.Lens);
             if (destination.Length < PacketLength)
             {
                 throw new ArgumentException("Destination must be at least 29 bytes.", nameof(destination));

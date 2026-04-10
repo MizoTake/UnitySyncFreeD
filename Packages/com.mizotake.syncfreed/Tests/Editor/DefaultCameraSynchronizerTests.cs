@@ -121,5 +121,33 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             Assert.That(state.CorrectedLens.ZoomNormalized, Is.EqualTo(1d).Within(0.0001d));
             Assert.That(state.CorrectedLens.FocusNormalized, Is.EqualTo(1d).Within(0.0001d));
         }
+
+        [Test]
+        public void Update_InDualDrive_MergesPartialObservedLensWithCommandLens()
+        {
+            var synchronizer = new DefaultCameraSynchronizer();
+            var context = new CameraSyncContext(
+                100L,
+                new CameraObservedFrame
+                {
+                    Lens = new LensState { FocusDistanceMeters = 7.5d },
+                    Validity = new ValidityState { IsTrackingValid = true, IsLensValid = true }
+                },
+                new CameraCommandFrame
+                {
+                    Lens = new LensState { FocalLengthMm = 35d, FocusDistanceMeters = 4d, IrisFNumber = 2.8d }
+                },
+                SyncMode.DualDrive,
+                new SyncTuningProfile());
+
+            var state = synchronizer.Update(context);
+
+            Assert.That(state.ObservedLens.FocalLengthMm, Is.EqualTo(35d).Within(0.0001d));
+            Assert.That(state.ObservedLens.FocusDistanceMeters, Is.EqualTo(7.5d).Within(0.0001d));
+            Assert.That(state.ObservedLens.IrisFNumber, Is.EqualTo(2.8d).Within(0.0001d));
+            Assert.That(state.CorrectedLens.FocalLengthMm, Is.EqualTo(35d).Within(0.0001d));
+            Assert.That(state.CorrectedLens.FocusDistanceMeters, Is.EqualTo(7.5d).Within(0.0001d));
+            Assert.That(state.CorrectedLens.IrisFNumber, Is.EqualTo(2.8d).Within(0.0001d));
+        }
     }
 }
