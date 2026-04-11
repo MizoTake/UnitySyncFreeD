@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using MizoTake.SyncFreeD.ScriptableObjects;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
@@ -8,6 +9,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
     [DisallowMultipleComponent]
     public sealed class FreeDLoopbackReceiverBehaviour : MonoBehaviour
     {
+        [SerializeField] private FreeDUdpInputProfileAsset inputProfileAsset;
+        [SerializeField] private bool applyProfileOnEnable = true;
         [SerializeField] private string bindAddress = "127.0.0.1";
         [SerializeField] private int listenPort = 40000;
 
@@ -19,12 +22,40 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public string LastRemoteEndpoint { get; private set; } = string.Empty;
         public long LastReceivedAtUtcTicks { get; private set; }
         public bool IsBound => udpClient != null;
+        public FreeDUdpInputProfileAsset InputProfileAsset => inputProfileAsset;
+        public bool ApplyProfileOnEnable => applyProfileOnEnable;
+        public string BindAddress => bindAddress;
+        public int ListenPort => listenPort;
+
+        private void Reset()
+        {
+            if (applyProfileOnEnable)
+            {
+                ApplyProfile();
+            }
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (applyProfileOnEnable)
+            {
+                ApplyProfile();
+            }
+        }
+#endif
 
         private void OnEnable()
         {
+            if (applyProfileOnEnable)
+            {
+                ApplyProfile();
+            }
+
             try
             {
-                udpClient = new UdpClient(new IPEndPoint(IPAddress.Parse(bindAddress), listenPort));
+                var localAddress = string.IsNullOrWhiteSpace(bindAddress) ? IPAddress.Any : IPAddress.Parse(bindAddress);
+                udpClient = new UdpClient(new IPEndPoint(localAddress, listenPort));
                 udpClient.Client.Blocking = false;
             }
             catch (Exception exception)
@@ -57,6 +88,27 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                     break;
                 }
             }
+        }
+
+        public void SetInputProfileAsset(FreeDUdpInputProfileAsset profileAsset, bool applyImmediately)
+        {
+            inputProfileAsset = profileAsset;
+            if (applyImmediately)
+            {
+                ApplyProfile();
+            }
+        }
+
+        public void ApplyProfile()
+        {
+            if (inputProfileAsset == null || inputProfileAsset.Value == null)
+            {
+                return;
+            }
+
+            var profile = inputProfileAsset.Value;
+            bindAddress = profile.BindAddress ?? string.Empty;
+            listenPort = profile.ListenPort;
         }
 
         private void OnDisable()

@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.Core.Outputs;
+using MizoTake.SyncFreeD.ScriptableObjects;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
@@ -12,6 +13,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
     public sealed class FreeDInputSourceBehaviour : MonoBehaviour, ICameraFrameProvider, ILensDataSource
     {
         [SerializeField] private string sourceId = "FreeDInput";
+        [SerializeField] private FreeDUdpInputProfileAsset inputProfileAsset;
+        [SerializeField] private bool applyProfileOnEnable = true;
         [SerializeField] private int listenPort = 40000;
         [SerializeField] private string bindAddress = string.Empty;
         [SerializeField] private bool validateChecksum = true;
@@ -34,15 +37,41 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public int ReceivedCount { get; private set; }
         public int DroppedPacketCount { get; private set; }
         public bool IsBound => udpClient != null;
+        public FreeDUdpInputProfileAsset InputProfileAsset => inputProfileAsset;
+        public bool ApplyProfileOnEnable => applyProfileOnEnable;
+        public int ListenPort => listenPort;
+        public string BindAddress => bindAddress;
+        public bool ValidateChecksum => validateChecksum;
+        public int CameraIdFilter => cameraIdFilter;
+        public bool JoinMulticastGroup => joinMulticastGroup;
+        public string MulticastGroupIpAddress => multicastGroupIpAddress;
+        public string MulticastInterfaceAddress => multicastInterfaceAddress;
+
+        private void Reset()
+        {
+            if (applyProfileOnEnable)
+            {
+                ApplyProfile();
+            }
+        }
 
         private void OnEnable()
         {
+            if (applyProfileOnEnable)
+            {
+                ApplyProfile();
+            }
             TryBind();
         }
 
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            if (applyProfileOnEnable)
+            {
+                ApplyProfile();
+            }
+
             if (!Application.isPlaying)
             {
                 return;
@@ -125,6 +154,15 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             return lastFrame.Lens.FocalLengthMm > 0d || lastFrame.Lens.FocusDistanceMeters > 0d || lastFrame.Lens.IrisFNumber > 0d;
         }
 
+        public void SetInputProfileAsset(FreeDUdpInputProfileAsset profileAsset, bool applyImmediately)
+        {
+            inputProfileAsset = profileAsset;
+            if (applyImmediately)
+            {
+                ApplyProfile();
+            }
+        }
+
         private void OnDisable()
         {
             udpClient?.Dispose();
@@ -178,6 +216,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 udpClient?.Dispose();
                 udpClient = null;
             }
+        }
+
+        public void ApplyProfile()
+        {
+            if (inputProfileAsset == null || inputProfileAsset.Value == null)
+            {
+                return;
+            }
+
+            var profile = inputProfileAsset.Value;
+            listenPort = profile.ListenPort;
+            bindAddress = profile.BindAddress ?? string.Empty;
+            validateChecksum = profile.ValidateChecksum;
+            cameraIdFilter = profile.CameraIdFilter;
+            joinMulticastGroup = profile.JoinMulticastGroup;
+            multicastGroupIpAddress = profile.MulticastGroupIpAddress ?? "239.0.0.1";
+            multicastInterfaceAddress = profile.MulticastInterfaceAddress ?? string.Empty;
         }
 
         private ICameraFrameProvider ResolveCommandSource()

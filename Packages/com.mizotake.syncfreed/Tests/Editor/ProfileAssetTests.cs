@@ -26,11 +26,30 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         }
 
         [Test]
+        public void FreeDUdpInputProfileAsset_HasDefaultValueInstance()
+        {
+            var asset = UnityEngine.ScriptableObject.CreateInstance<FreeDUdpInputProfileAsset>();
+            Assert.That(asset.Value, Is.Not.Null);
+            Assert.That(asset.Value.ListenPort, Is.EqualTo(40000));
+            Assert.That(asset.Value.MulticastGroupIpAddress, Is.EqualTo("239.0.0.1"));
+        }
+
+        [Test]
         public void FreeDControllerProfileAsset_HasDefaultValueInstance()
         {
             var asset = UnityEngine.ScriptableObject.CreateInstance<FreeDControllerProfileAsset>();
             Assert.That(asset.Value, Is.Not.Null);
             Assert.That(asset.Value.MoveSpeedMetersPerSecond, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void SyncFreeDBehaviourProfileAsset_HasDefaultValueInstance()
+        {
+            var asset = UnityEngine.ScriptableObject.CreateInstance<SyncFreeDBehaviourProfileAsset>();
+            Assert.That(asset.Value, Is.Not.Null);
+            Assert.That(asset.Value.SyncMode, Is.EqualTo(MizoTake.SyncFreeD.Core.Models.SyncMode.VirtualMaster));
+            Assert.That(asset.Value.OutputTickMode, Is.EqualTo(MizoTake.SyncFreeD.Core.Models.OutputTickMode.LateUpdate));
+            Assert.That(asset.Value.Tuning, Is.Not.Null);
         }
     }
 }

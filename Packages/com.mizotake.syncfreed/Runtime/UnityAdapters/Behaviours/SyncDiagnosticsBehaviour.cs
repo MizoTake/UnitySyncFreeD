@@ -41,7 +41,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             var diagnostics = syncBehaviour.LastDiagnostics;
-            var output = syncBehaviour.GetComponent<FreeDUdpOutputBehaviour>();
+            var output = syncBehaviour.OutputBehaviour;
             var infoText = logLevel >= SyncLogLevel.Info ? string.Format(CultureInfo.InvariantCulture, "{0} Cam {1} Mode {2}", syncBehaviour.LastState.SourceId ?? string.Empty, syncBehaviour.LastState.CameraId, syncBehaviour.SyncMode) : string.Empty;
             var zoomText = logLevel >= SyncLogLevel.Info ? string.Format(CultureInfo.InvariantCulture, " Zoom {0:F1}mm", diagnostics.ZoomErrorMm) : string.Empty;
             var packetText = output != null && logLevel >= SyncLogLevel.Packet ? string.Format(CultureInfo.InvariantCulture, " Ck {0:X2} Ua {1:X4} Sent {2} Fail {3} SpreadUs {4}", output.LastChecksum, output.LastUserArea, output.LastSendSuccessCount, output.TotalSendFailureCount, output.LastDestinationSpreadMicroseconds) : string.Empty;

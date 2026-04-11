@@ -224,11 +224,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 553085806}
   - component: {fileID: 553085811}
+  - component: {fileID: 553085806}
   - component: {fileID: 553085810}
   - component: {fileID: 553085809}
-  - component: {fileID: 553085808}
   - component: {fileID: 553085807}
   m_Layer: 0
   m_Name: FreeD Driven Camera
@@ -259,6 +258,7 @@ MonoBehaviour:
   aperture: 4
   focalLength: 50
   kernelSize: 1
+  setupStatus: "\u65E2\u5B58\u306E PostProcessLayer / PostProcessVolume \u304C\u898B\u3064\u304B\u3089\u306A\u3044\u305F\u3081\u3001\u81EA\u52D5\u8A2D\u5B9A\u3092\u30B9\u30AD\u30C3\u30D7\u3057\u307E\u3057\u305F\u3002"
 --- !u!114 &553085807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -271,7 +271,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a49f29bafc5e8546bdfc303a6a5a338, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sourceBehaviour: {fileID: 553085808}
+  sourceBehaviour: {fileID: 757804533}
   targetTransform: {fileID: 553085811}
   targetCamera: {fileID: 553085810}
   applyPosition: 1
@@ -281,26 +281,6 @@ MonoBehaviour:
   forcePhysicalCamera: 1
   applyFocusDistanceToDepthOfField: 1
   depthOfFieldTarget: {fileID: 553085806}
---- !u!114 &553085808
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 553085804}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5ffe20b21a6ca94b80aa5742df9f4d5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  sourceId: FreeDInput
-  listenPort: 41030
-  bindAddress: 
-  validateChecksum: 1
-  cameraIdFilter: -1
-  joinMulticastGroup: 1
-  multicastGroupIpAddress: 239.10.10.10
-  multicastInterfaceAddress: 
 --- !u!81 &553085809
 AudioListener:
   m_ObjectHideFlags: 0
@@ -404,6 +384,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e75d22ef8244d27bba4bbec1f70f701, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  showLegend: 1
+  legendRect:
+    serializedVersion: 2
+    x: 16
+    y: 320
+    width: 220
+    height: 150
 --- !u!4 &700003002
 Transform:
   m_ObjectHideFlags: 0
@@ -419,6 +406,61 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &757804532
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 757804534}
+  - component: {fileID: 757804533}
+  m_Layer: 0
+  m_Name: Sample Input
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &757804533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 757804532}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5ffe20b21a6ca94b80aa5742df9f4d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sourceId: FreeDInput
+  inputProfileAsset: {fileID: 11400000, guid: 00645e46133e21f4892737cdf28f0527, type: 2}
+  applyProfileOnEnable: 1
+  listenPort: 41030
+  bindAddress: 
+  validateChecksum: 1
+  cameraIdFilter: -1
+  joinMulticastGroup: 1
+  multicastGroupIpAddress: 239.10.10.10
+  multicastInterfaceAddress: 
+  commandSourceBehaviour: {fileID: 0}
+--- !u!4 &757804534
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 757804532}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -426,3 +468,4 @@ SceneRoots:
   - {fileID: 553085811}
   - {fileID: 16543369}
   - {fileID: 700003002}
+  - {fileID: 757804534}

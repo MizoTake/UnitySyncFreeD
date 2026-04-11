@@ -1,14 +1,26 @@
 # OutputInspectorSample
 
-この sample は「送れているか」「どこに送っているか」「受信できているか」を確認するための sample です。
+`Scenes/OutputInspectorSample.unity` は packet preview、diagnostics、recording、loopback 導線を分けて確認する sample です。
 
-確認できる処理:
+用途:
 
 - Free-D D1 packet inspection
 - UDP output / loopback
 - diagnostics / checksum / user area / network warning
+- debug log / recording output の確認
 
-1. `Assets/Samples/SyncFreeD/OutputInspectorSample/Scenes/OutputInspectorSample.unity` を開きます。
-2. `FreeDUdpOutputBehaviour` の送り先と warning 表示を確認します。
-3. `SyncFreeDPacketPreviewBehaviour` と `SyncDiagnosticsBehaviour` の表示を確認します。
-4. `FreeDLoopbackReceiverBehaviour` の `Received Count`、`Remote Endpoint`、受信 packet が増えることを確認します。
+シーン構成:
+
+- `Output Inspector Camera`: camera / source / sync 本体
+- `Sample Output`: `LocalLoopbackOutput` preset を参照する UDP output と debug / recording output
+- `Sample Debug HUD`: packet preview と diagnostics
+- `Sample Visual Rig`: 構図差分を見る marker 群
+- `SyncFreeDBehaviour` は `DefaultSyncBehaviour` preset を参照
+
+1. sample を import します。
+2. `Scenes/OutputInspectorSample.unity` を開きます。
+3. `Output Inspector Camera` が `DefaultSyncBehaviour`、`Sample Output` が `LocalLoopbackOutput` を参照していることを確認します。
+4. Play Mode に入ります。
+5. `Sample Visual Rig` の黄色の `Center Tower` と青/赤の左右 marker が camera movement に応じて変化することを確認します。
+6. `Sample Debug HUD` の `SyncFreeDPacketPreviewBehaviour` と `SyncDiagnosticsBehaviour` を確認します。
+7. packet preview、diagnostics、recorded frame count、checksum、user area、network warning が期待通りに更新されることを確認します。

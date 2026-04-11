@@ -15,6 +15,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private FreeDUdpOutputBehaviour outputBehaviour;
         [SerializeField] private DebugLogOutputBehaviour debugLogOutputBehaviour;
         [SerializeField] private RecordingOutputBehaviour recordingOutputBehaviour;
+        [SerializeField] private SyncFreeDBehaviourProfileAsset profileAsset;
+        [SerializeField] private bool applyProfileOnAwake = true;
         [SerializeField] private SyncMode syncMode = SyncMode.VirtualMaster;
         [SerializeField] private OutputPoseKind outputPoseKind = OutputPoseKind.Corrected;
         [SerializeField] private SyncTuningProfileAsset tuningProfileAsset;
@@ -35,24 +37,39 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public SyncDiagnosticsSnapshot LastDiagnostics { get; private set; }
         public int CorrectionAppliedCount { get; private set; }
         public ICameraFrameProvider SourceProvider => sourceBehaviour as ICameraFrameProvider;
+        public FreeDUdpOutputBehaviour OutputBehaviour => outputBehaviour;
         public SyncMode SyncMode => syncMode;
+        public OutputPoseKind OutputPoseKind => outputPoseKind;
         public SyncTuningProfile EffectiveTuning => tuningProfileAsset != null && tuningProfileAsset.Value != null ? tuningProfileAsset.Value : tuning;
+        public SyncFreeDBehaviourProfileAsset ProfileAsset => profileAsset;
+        public bool ApplyProfileOnAwake => applyProfileOnAwake;
         public SyncTuningProfileAsset TuningProfileAsset => tuningProfileAsset;
         public DeviceProfileAsset DeviceProfileAsset => deviceProfileAsset;
         public FirmwareBehaviorProfileAsset FirmwareBehaviorProfileAsset => firmwareBehaviorProfileAsset;
         public LensProfileAsset LensProfileAsset => lensProfileAsset;
         public MountProfileAsset MountProfileAsset => mountProfileAsset;
+        public OutputTickMode OutputTickMode => outputTickMode;
+        public int FixedIntervalMs => fixedIntervalMs;
+        public bool LogPacketHex => logPacketHex;
         public string FirmwareBehaviorWarning => FirmwareBehaviorProfileValidator.Validate(firmwareBehaviorProfileAsset != null ? firmwareBehaviorProfileAsset.Value : null, outputBehaviour != null ? outputBehaviour.SendMode : PacketSendMode.SingleDestinationUnicast);
         public bool HasFirmwareBehaviorWarning => !string.IsNullOrEmpty(FirmwareBehaviorWarning);
 
         private void Reset()
         {
             ResolveReferences();
+            if (applyProfileOnAwake)
+            {
+                ApplyProfile();
+            }
         }
 
         private void Awake()
         {
             ResolveReferences();
+            if (applyProfileOnAwake)
+            {
+                ApplyProfile();
+            }
             ResetFixedIntervalClock();
         }
 
@@ -60,6 +77,10 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private void OnValidate()
         {
             ResolveReferences();
+            if (applyProfileOnAwake)
+            {
+                ApplyProfile();
+            }
         }
 #endif
 
@@ -102,6 +123,36 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public bool ManualTick()
         {
             return Tick();
+        }
+
+        public void SetProfileAsset(SyncFreeDBehaviourProfileAsset asset, bool applyImmediately)
+        {
+            profileAsset = asset;
+            if (applyImmediately)
+            {
+                ApplyProfile();
+            }
+        }
+
+        public void ApplyProfile()
+        {
+            if (profileAsset == null || profileAsset.Value == null)
+            {
+                return;
+            }
+
+            var profile = profileAsset.Value;
+            syncMode = profile.SyncMode;
+            outputPoseKind = profile.OutputPoseKind;
+            outputTickMode = profile.OutputTickMode;
+            fixedIntervalMs = profile.FixedIntervalMs;
+            logPacketHex = profile.LogPacketHex;
+            tuningProfileAsset = profile.TuningProfileAsset;
+            tuning = profile.Tuning ?? new SyncTuningProfile();
+            deviceProfileAsset = profile.DeviceProfileAsset;
+            firmwareBehaviorProfileAsset = profile.FirmwareBehaviorProfileAsset;
+            lensProfileAsset = profile.LensProfileAsset;
+            mountProfileAsset = profile.MountProfileAsset;
         }
 
         private void OnEnable()

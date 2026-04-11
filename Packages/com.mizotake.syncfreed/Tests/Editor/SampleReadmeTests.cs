@@ -9,7 +9,7 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         [Test]
         public void BasicVirtualCameraReadme_DescribesCoreFlow()
         {
-            AssertReadmeContains("Assets/Samples/SyncFreeD/BasicVirtualCamera/README.md", "Canonical State", "Free-D D1", "UDP");
+            AssertReadmeContains("Assets/Samples/SyncFreeD/BasicVirtualCamera/README.md", "Canonical State", "Free-D D1", "UDP", "Sample Output");
         }
 
         [Test]
@@ -27,7 +27,7 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         [Test]
         public void OutputInspectorReadme_DescribesInspectionFlow()
         {
-            AssertReadmeContains("Assets/Samples/SyncFreeD/OutputInspectorSample/README.md", "loopback", "checksum", "network warning");
+            AssertReadmeContains("Assets/Samples/SyncFreeD/OutputInspectorSample/README.md", "loopback", "checksum", "network warning", "recording");
         }
 
         [Test]
@@ -39,7 +39,13 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         [Test]
         public void FreeDReceiveReadme_DescribesReceiveFlow()
         {
-            AssertReadmeContains("Assets/Samples/SyncFreeD/FreeDReceiveSample/README.md", "multicast", "CG camera", "focal length", "focus distance");
+            AssertReadmeContains("Assets/Samples/SyncFreeD/FreeDReceiveSample/README.md", "multicast", "CG camera", "focal length", "focus distance", "Sample Input");
+        }
+
+        [Test]
+        public void SharedPresetsReadme_DescribesSeparatedNetworkAndBehaviourPresets()
+        {
+            AssertReadmeContains("Assets/Samples/SyncFreeD/SharedPresets/README.md", "ScriptableObject", "ネットワーク設定", "挙動設定", "IP address");
         }
 
         private static void AssertReadmeContains(string relativePath, params string[] expectedTokens)

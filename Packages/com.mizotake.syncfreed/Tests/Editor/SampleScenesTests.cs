@@ -2,6 +2,7 @@ using NUnit.Framework;
 using System.IO;
 using System.Linq;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.Tests.Editor
@@ -96,6 +97,69 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         {
             AssertFileExists("Assets/Samples/SyncFreeD/SharedPresets/LocalLoopbackOutput.asset");
             AssertFileExists("Assets/Samples/SyncFreeD/SharedPresets/ComfortController.asset");
+            AssertFileExists("Assets/Samples/SyncFreeD/SharedPresets/LocalLoopbackInput.asset");
+            AssertFileExists("Assets/Samples/SyncFreeD/SharedPresets/FreeDMulticastInput.asset");
+            AssertFileExists("Assets/Samples/SyncFreeD/SharedPresets/DefaultSyncBehaviour.asset");
+        }
+
+        [TestCase("Assets/Samples/SyncFreeD/BasicVirtualCamera/Scenes/BasicVirtualCamera.unity", "Main Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/ExternalTrackerSample/Scenes/ExternalTrackerSample.unity", "Tracked Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/FreeDControllerSample/Scenes/FreeDControllerSample.unity", "FreeD Controller Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/OutputInspectorSample/Scenes/OutputInspectorSample.unity", "Output Inspector Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/ReplaySample/Scenes/ReplaySample.unity", "Replay Camera")]
+        public void SenderSamples_SeparateCameraOutputAndPresetReferences(string scenePath, string cameraName)
+        {
+            var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            var roots = scene.GetRootGameObjects();
+            var cameraObject = roots.FirstOrDefault(root => root.name == cameraName);
+            Assert.That(cameraObject, Is.Not.Null, $"Camera root not found: {scenePath}");
+            Assert.That(cameraObject.GetComponent<FreeDUdpOutputBehaviour>(), Is.Null, $"FreeDUdpOutputBehaviour should be separated from camera: {scenePath}");
+            Assert.That(cameraObject.GetComponent<SyncFreeDPacketPreviewBehaviour>(), Is.Null, $"Packet preview should be separated from camera: {scenePath}");
+            Assert.That(cameraObject.GetComponent<SyncDiagnosticsBehaviour>(), Is.Null, $"Diagnostics should be separated from camera: {scenePath}");
+            Assert.That(cameraObject.GetComponent<RecordingOutputBehaviour>(), Is.Null, $"Recording output should be separated from camera: {scenePath}");
+            Assert.That(cameraObject.GetComponent<DebugLogOutputBehaviour>(), Is.Null, $"Debug log output should be separated from camera: {scenePath}");
+
+            var syncBehaviour = cameraObject.GetComponent<SyncFreeDBehaviour>();
+            Assert.That(syncBehaviour, Is.Not.Null, $"SyncFreeDBehaviour missing on camera: {scenePath}");
+            Assert.That(syncBehaviour.ProfileAsset, Is.Not.Null, $"SyncFreeDBehaviour preset missing: {scenePath}");
+
+            var outputRoot = roots.FirstOrDefault(root => root.name == "Sample Output");
+            Assert.That(outputRoot, Is.Not.Null, $"Sample Output root missing: {scenePath}");
+            var outputBehaviour = outputRoot.GetComponent<FreeDUdpOutputBehaviour>();
+            Assert.That(outputBehaviour, Is.Not.Null, $"FreeDUdpOutputBehaviour missing on Sample Output: {scenePath}");
+            Assert.That(outputBehaviour.OutputProfileAsset, Is.Not.Null, $"Output preset missing on Sample Output: {scenePath}");
+
+            var debugHudRoot = roots.FirstOrDefault(root => root.name == "Sample Debug HUD");
+            Assert.That(debugHudRoot, Is.Not.Null, $"Sample Debug HUD root missing: {scenePath}");
+            Assert.That(debugHudRoot.GetComponent<SyncFreeDPacketPreviewBehaviour>(), Is.Not.Null, $"Packet preview missing on Sample Debug HUD: {scenePath}");
+        }
+
+        [Test]
+        public void FreeDControllerSample_SeparatesLoopbackReceiverFromCamera()
+        {
+            var scene = EditorSceneManager.OpenScene("Assets/Samples/SyncFreeD/FreeDControllerSample/Scenes/FreeDControllerSample.unity", OpenSceneMode.Single);
+            var roots = scene.GetRootGameObjects();
+            var cameraObject = roots.First(root => root.name == "FreeD Controller Camera");
+            Assert.That(cameraObject.GetComponent<FreeDLoopbackReceiverBehaviour>(), Is.Null, "Loopback receiver should not stay on camera.");
+            var receiverRoot = roots.FirstOrDefault(root => root.name == "Sample Loopback Receiver");
+            Assert.That(receiverRoot, Is.Not.Null, "Sample Loopback Receiver root missing.");
+            var receiver = receiverRoot.GetComponent<FreeDLoopbackReceiverBehaviour>();
+            Assert.That(receiver, Is.Not.Null, "Loopback receiver missing.");
+            Assert.That(receiver.InputProfileAsset, Is.Not.Null, "Loopback receiver input preset missing.");
+        }
+
+        [Test]
+        public void FreeDReceiveSample_UsesInputPresetAsset()
+        {
+            var scene = EditorSceneManager.OpenScene("Assets/Samples/SyncFreeD/FreeDReceiveSample/Scenes/FreeDReceiveSample.unity", OpenSceneMode.Single);
+            var roots = scene.GetRootGameObjects();
+            var cameraObject = roots.First(root => root.name == "FreeD Driven Camera");
+            Assert.That(cameraObject.GetComponent<FreeDInputSourceBehaviour>(), Is.Null, "FreeD input should be separated from the driven camera.");
+            var inputRoot = roots.FirstOrDefault(root => root.name == "Sample Input");
+            Assert.That(inputRoot, Is.Not.Null, "Sample Input root missing.");
+            var inputSource = inputRoot.GetComponent<FreeDInputSourceBehaviour>();
+            Assert.That(inputSource, Is.Not.Null, "FreeDInputSourceBehaviour missing.");
+            Assert.That(inputSource.InputProfileAsset, Is.Not.Null, "FreeD input preset missing.");
         }
 
         [Test]

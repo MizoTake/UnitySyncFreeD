@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 975528b5dc87b834eadb8031d750a2c5, type: 3}
+  m_Name: DefaultSyncBehaviour
+  m_EditorClassIdentifier: 
+  Value:
+    SyncMode: 0
+    OutputPoseKind: 3
+    OutputTickMode: 0
+    FixedIntervalMs: 33
+    LogPacketHex: 0
+    TuningProfileAsset: {fileID: 0}
+    Tuning:
+      PanSpeedScale: 1
+      TiltSpeedScale: 1
+      ZoomSpeedScale: 1
+      RotationCorrectionGain: 1
+      PositionCorrectionGain: 1
+      ZoomCorrectionGain: 1
+      SnapThresholdDeg: 5
+      SnapThresholdMm: 100
+      SnapThresholdZoom: 0.1
+      InquiryIntervalMs: 100
+      IdleToSettleDelayMs: 150
+      SettleIntervalMs: 50
+      SettleTimeoutMs: 1000
+      RequiredConsecutiveMatches: 3
+      TrackingDelayMs: 0
+      OutputDelayMs: 0
+      VideoAlignmentDelayMs: 0
+    DeviceProfileAsset: {fileID: 0}
+    FirmwareBehaviorProfileAsset: {fileID: 0}
+    LensProfileAsset: {fileID: 0}
+    MountProfileAsset: {fileID: 0}

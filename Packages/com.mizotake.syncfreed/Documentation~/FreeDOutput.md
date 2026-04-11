@@ -21,7 +21,12 @@
 - `Join Multicast Group`
 - `Multicast Interface Address`
 
-送信タイミングは `SyncFreeDBehaviour` 側で切り替えます。
+sample ではネットワーク設定を `ScriptableObject` preset に分けて扱います。
+
+- `FreeDUdpOutputProfileAsset`: Free-D 送信設定
+- `FreeDUdpInputProfileAsset`: Free-D / loopback 受信設定
+
+送信タイミングや pose 選択などの挙動設定は `SyncFreeDBehaviourProfileAsset` 側で切り替えます。
 
 - `LateUpdate`
 - `FixedInterval`
