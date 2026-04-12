@@ -13,7 +13,11 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         private readonly FreeDPacketBuilder packetBuilder = new FreeDPacketBuilder();
         private FreeDUdpTransport transport;
         private FreeDInputSourceBehaviour targetInputSource;
+        private FreeDLoopbackReceiverBehaviour targetLoopbackReceiver;
         private FreeDDrivenCameraBehaviour targetDrivenCamera;
+        private FreeDControllerBehaviour targetController;
+        private Transform directTargetTransform;
+        private Camera directTargetCamera;
         private bool preferLocalLoopbackForSceneDebug = true;
         private bool continuousSend;
         private double nextSendTime;
@@ -41,9 +45,9 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         private string lastPacketHex = string.Empty;
 
         [MenuItem("Tools/SyncFreeD/Debug Controller")]
-        public static void OpenWindow()
+        public static FreeDDebugControllerWindow OpenWindow()
         {
-            GetWindow<FreeDDebugControllerWindow>("FreeD Debug Controller");
+            return GetWindow<FreeDDebugControllerWindow>("FreeD Debug Controller");
         }
 
         private void OnEnable()
@@ -71,8 +75,22 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         public void SetTargetForDebug(FreeDInputSourceBehaviour inputSource, FreeDDrivenCameraBehaviour drivenCamera)
         {
             targetInputSource = inputSource;
+            targetLoopbackReceiver = null;
             targetDrivenCamera = drivenCamera;
-            SyncEndpointFromInputSource();
+            targetController = null;
+            ResolveDirectTargets(drivenCamera != null ? drivenCamera.gameObject : inputSource != null ? inputSource.gameObject : null);
+            SyncEndpointFromReceiver();
+            CopyPoseAndLensFromDrivenCamera();
+        }
+
+        public void SetTargetForDebug(GameObject context)
+        {
+            targetInputSource = Support.SyncFreeDSupportSummary.FindInputSourceBehaviour(context);
+            targetLoopbackReceiver = targetInputSource == null ? Support.SyncFreeDSupportSummary.FindLoopbackReceiverBehaviour(context) : null;
+            targetDrivenCamera = Support.SyncFreeDSupportSummary.FindDrivenCameraBehaviour(context);
+            targetController = Support.SyncFreeDSupportSummary.FindControllerBehaviour(context);
+            ResolveDirectTargets(context);
+            SyncEndpointFromReceiver();
             CopyPoseAndLensFromDrivenCamera();
         }
 
@@ -84,7 +102,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
 
         private void OnGUI()
         {
-            if (targetInputSource == null || !targetInputSource)
+            if ((targetInputSource == null || !targetInputSource) && (targetLoopbackReceiver == null || !targetLoopbackReceiver) && directTargetTransform == null)
             {
                 SyncFromSceneTarget();
             }
@@ -144,7 +162,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("受信 camera から姿勢を取得"))
+                if (GUILayout.Button("対象 camera から姿勢を取得"))
                 {
                     CopyPoseAndLensFromDrivenCamera();
                 }
@@ -168,7 +186,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
             }
 
             EditorGUILayout.Space();
-            EditorGUILayout.HelpBox("scene 上の FreeDInputSourceBehaviour を自動検出し、その待受設定に向けて送信します。受信専用 sample では Play Mode 中にこの window から Free-D を送って確認します。", MessageType.Info);
+            EditorGUILayout.HelpBox("scene 上の FreeDInputSourceBehaviour / FreeDLoopbackReceiverBehaviour があれば待受設定に向けて送信しつつ、対象 camera に debug apply します。", MessageType.Info);
             DrawRuntimeDiagnostics();
             EditorGUILayout.SelectableLabel(lastPacketHex, EditorStyles.textField, GUILayout.Height(36f));
         }
@@ -187,29 +205,34 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         private void DrawTargetPanel()
         {
             EditorGUILayout.LabelField("対象 camera", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Hierarchy の選択を優先し、未選択なら scene から自動検出します。手動の ObjectField は使いません。", MessageType.None);
+            EditorGUILayout.LabelField("現在の選択", Selection.activeGameObject != null ? Selection.activeGameObject.name : "なし");
+            EditorGUILayout.LabelField("操作対象", BuildDirectTargetSummary());
+            EditorGUILayout.LabelField("受信 Behaviour", BuildReceiverSummary());
+            EditorGUILayout.LabelField("送信先", BuildEndpointSummary());
             using (new EditorGUILayout.HorizontalScope())
             {
-                var newInputSource = (FreeDInputSourceBehaviour)EditorGUILayout.ObjectField("Input Source", targetInputSource, typeof(FreeDInputSourceBehaviour), true);
-                if (newInputSource != targetInputSource)
+                using (new EditorGUI.DisabledScope(Selection.activeGameObject == null))
                 {
-                    targetInputSource = newInputSource;
-                    SyncEndpointFromInputSource();
+                    if (GUILayout.Button("選択から更新"))
+                    {
+                        SyncFromSelection();
+                    }
                 }
-            }
 
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                targetDrivenCamera = (FreeDDrivenCameraBehaviour)EditorGUILayout.ObjectField("Driven Camera", targetDrivenCamera, typeof(FreeDDrivenCameraBehaviour), true);
-                if (GUILayout.Button("Scene から自動検出", GUILayout.Width(140f)))
+                if (GUILayout.Button("Scene から再検出"))
                 {
                     SyncFromSceneTarget();
                 }
             }
-
             preferLocalLoopbackForSceneDebug = EditorGUILayout.Toggle("Prefer Local Loopback", preferLocalLoopbackForSceneDebug);
-            if (targetInputSource != null)
+            if (targetInputSource != null || targetLoopbackReceiver != null)
             {
-                EditorGUILayout.HelpBox(preferLocalLoopbackForSceneDebug ? "scene デバッグでは 127.0.0.1:listenPort に送ります。" : "受信 camera の multicast / unicast 設定に合わせて送ります。", MessageType.None);
+                EditorGUILayout.HelpBox(targetLoopbackReceiver != null || preferLocalLoopbackForSceneDebug ? "scene デバッグでは 127.0.0.1:listenPort に送ります。" : "受信 camera の multicast / unicast 設定に合わせて送ります。", MessageType.None);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("受信 Behaviour が見つからないため、送信ボタンは対象 camera へ直接 debug apply します。", MessageType.None);
             }
         }
 
@@ -269,12 +292,11 @@ namespace MizoTake.SyncFreeD.Editor.Windows
 
         private void SendPacket()
         {
-            if (targetInputSource == null || !targetInputSource)
+            if ((targetInputSource == null || !targetInputSource) && (targetLoopbackReceiver == null || !targetLoopbackReceiver) && directTargetTransform == null)
             {
                 SyncFromSceneTarget();
             }
 
-            transport ??= new FreeDUdpTransport();
             var state = new CameraSyncState
             {
                 CameraId = cameraId,
@@ -300,13 +322,25 @@ namespace MizoTake.SyncFreeD.Editor.Windows
             };
             packetBuilder.Build(state, packetBuffer);
             lastPacketHex = System.BitConverter.ToString(packetBuffer);
-            if (sendMode == PacketSendMode.Multicast)
+            var shouldApplyDirectly = ShouldApplyDirectlyForDebug();
+            var hasUdpTarget = targetInputSource != null || targetLoopbackReceiver != null;
+            if (hasUdpTarget)
             {
-                transport.Send(packetBuffer, multicastGroupIpAddress, multicastPort);
-                return;
+                transport ??= new FreeDUdpTransport();
+                if (sendMode == PacketSendMode.Multicast)
+                {
+                    transport.Send(packetBuffer, multicastGroupIpAddress, multicastPort);
+                }
+                else
+                {
+                    transport.Send(packetBuffer, destinationIpAddress, destinationPort);
+                }
             }
 
-            transport.Send(packetBuffer, destinationIpAddress, destinationPort);
+            if (shouldApplyDirectly)
+            {
+                ApplyPoseAndLensDirectly();
+            }
         }
 
         private void SyncFromSelection()
@@ -316,46 +350,33 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 return;
             }
 
-            targetDrivenCamera = Selection.activeGameObject.GetComponent<FreeDDrivenCameraBehaviour>() ?? targetDrivenCamera;
-            targetInputSource = Selection.activeGameObject.GetComponent<FreeDInputSourceBehaviour>() ?? targetInputSource;
-            if (targetDrivenCamera != null && targetInputSource == null)
-            {
-                targetInputSource = targetDrivenCamera.GetComponent<FreeDInputSourceBehaviour>();
-            }
-
-            SyncEndpointFromInputSource();
+            SetTargetForDebug(Selection.activeGameObject);
         }
 
         private void SyncFromSceneTarget()
         {
-            if (targetDrivenCamera == null)
-            {
-                targetDrivenCamera = FindFirstObjectByType<FreeDDrivenCameraBehaviour>();
-            }
-
-            if (targetInputSource == null)
-            {
-                targetInputSource = targetDrivenCamera != null ? targetDrivenCamera.GetComponent<FreeDInputSourceBehaviour>() : FindFirstObjectByType<FreeDInputSourceBehaviour>();
-            }
-
-            SyncEndpointFromInputSource();
+            SetTargetForDebug(Selection.activeGameObject);
             CopyPoseAndLensFromDrivenCamera();
         }
 
-        private void SyncEndpointFromInputSource()
+        private void SyncEndpointFromReceiver()
         {
-            if (targetInputSource == null)
+            var listenPort = -1;
+            if (targetInputSource != null)
+            {
+                listenPort = targetInputSource.ListenPort;
+            }
+            else if (targetLoopbackReceiver != null)
+            {
+                listenPort = targetLoopbackReceiver.ListenPort;
+            }
+
+            if (listenPort <= 0)
             {
                 return;
             }
 
-            var serializedObject = new SerializedObject(targetInputSource);
-            var joinMulticastGroupProperty = serializedObject.FindProperty("joinMulticastGroup");
-            var listenPortProperty = serializedObject.FindProperty("listenPort");
-            var multicastGroupProperty = serializedObject.FindProperty("multicastGroupIpAddress");
-            var bindAddressProperty = serializedObject.FindProperty("bindAddress");
-            var listenPort = listenPortProperty != null ? listenPortProperty.intValue : destinationPort;
-            if (preferLocalLoopbackForSceneDebug)
+            if (targetLoopbackReceiver != null || preferLocalLoopbackForSceneDebug)
             {
                 sendMode = PacketSendMode.SingleDestinationUnicast;
                 destinationIpAddress = "127.0.0.1";
@@ -364,34 +385,156 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 return;
             }
 
-            sendMode = joinMulticastGroupProperty != null && joinMulticastGroupProperty.boolValue ? PacketSendMode.Multicast : PacketSendMode.SingleDestinationUnicast;
+            sendMode = targetInputSource.JoinMulticastGroup ? PacketSendMode.Multicast : PacketSendMode.SingleDestinationUnicast;
             destinationPort = listenPort;
             multicastPort = listenPort;
-            multicastGroupIpAddress = multicastGroupProperty != null && !string.IsNullOrWhiteSpace(multicastGroupProperty.stringValue) ? multicastGroupProperty.stringValue : multicastGroupIpAddress;
-            destinationIpAddress = bindAddressProperty != null && !string.IsNullOrWhiteSpace(bindAddressProperty.stringValue) ? bindAddressProperty.stringValue : "127.0.0.1";
+            multicastGroupIpAddress = !string.IsNullOrWhiteSpace(targetInputSource.MulticastGroupIpAddress) ? targetInputSource.MulticastGroupIpAddress : multicastGroupIpAddress;
+            destinationIpAddress = !string.IsNullOrWhiteSpace(targetInputSource.BindAddress) ? targetInputSource.BindAddress : "127.0.0.1";
         }
 
         private void CopyPoseAndLensFromDrivenCamera()
         {
-            if (targetDrivenCamera == null)
+            if (directTargetTransform == null)
             {
                 return;
             }
 
-            var targetTransform = targetDrivenCamera.transform;
-            var camera = targetDrivenCamera.GetComponent<Camera>();
-            var euler = targetTransform.rotation.eulerAngles;
+            var euler = directTargetTransform.rotation.eulerAngles;
             panDeg = NormalizeSignedAngle(euler.y);
             tiltDeg = NormalizeSignedAngle(-euler.x);
             rollDeg = NormalizeSignedAngle(euler.z);
-            xMeters = targetTransform.position.x;
-            yMeters = targetTransform.position.y;
-            zMeters = targetTransform.position.z;
-            if (camera != null)
+            xMeters = directTargetTransform.position.x;
+            yMeters = directTargetTransform.position.y;
+            zMeters = directTargetTransform.position.z;
+            if (directTargetCamera != null)
             {
-                focalLengthMm = camera.focalLength;
-                focusDistanceMeters = camera.focusDistance;
+                focalLengthMm = directTargetCamera.focalLength;
+                focusDistanceMeters = directTargetCamera.focusDistance;
             }
+        }
+
+        private void ResolveDirectTargets(GameObject context)
+        {
+            if (targetDrivenCamera != null)
+            {
+                directTargetTransform = targetDrivenCamera.transform;
+                directTargetCamera = targetDrivenCamera.GetComponent<Camera>();
+                return;
+            }
+
+            if (targetController != null)
+            {
+                directTargetTransform = targetController.ControlledTransform;
+                directTargetCamera = targetController.ControlledCamera;
+                return;
+            }
+
+            if (context != null)
+            {
+                directTargetCamera = FindContextCamera(context);
+                directTargetTransform = directTargetCamera != null ? directTargetCamera.transform : null;
+                return;
+            }
+
+            var syncBehaviour = Support.SyncFreeDSupportSummary.FindSyncBehaviour(null);
+            if (syncBehaviour != null)
+            {
+                directTargetTransform = syncBehaviour.transform;
+                directTargetCamera = syncBehaviour.GetComponent<Camera>();
+                return;
+            }
+
+            directTargetCamera = FindContextCamera(null);
+            directTargetTransform = directTargetCamera != null ? directTargetCamera.transform : null;
+        }
+
+        private string BuildDirectTargetSummary()
+        {
+            if (directTargetTransform == null)
+            {
+                return "未検出";
+            }
+
+            if (targetDrivenCamera != null)
+            {
+                return $"{directTargetTransform.name} (FreeDDrivenCameraBehaviour)";
+            }
+
+            if (targetController != null)
+            {
+                return $"{directTargetTransform.name} (FreeDControllerBehaviour)";
+            }
+
+            return directTargetCamera != null ? $"{directTargetTransform.name} (Camera)" : directTargetTransform.name;
+        }
+
+        private string BuildReceiverSummary()
+        {
+            if (targetInputSource != null)
+            {
+                return $"{targetInputSource.name} (FreeDInputSourceBehaviour)";
+            }
+
+            if (targetLoopbackReceiver != null)
+            {
+                return $"{targetLoopbackReceiver.name} (FreeDLoopbackReceiverBehaviour)";
+            }
+
+            return "なし";
+        }
+
+        private string BuildEndpointSummary()
+        {
+            if (targetLoopbackReceiver != null)
+            {
+                return $"127.0.0.1:{destinationPort} (Loopback)";
+            }
+
+            if (targetInputSource != null)
+            {
+                if (sendMode == PacketSendMode.Multicast)
+                {
+                    return $"{multicastGroupIpAddress}:{multicastPort} (Multicast)";
+                }
+
+                return $"{destinationIpAddress}:{destinationPort} (Unicast)";
+            }
+
+            return "UDP送信なし / camera へ直接反映";
+        }
+
+        private bool ShouldApplyDirectlyForDebug()
+        {
+            return directTargetTransform != null;
+        }
+
+        private void ApplyPoseAndLensDirectly()
+        {
+            if (directTargetTransform == null)
+            {
+                return;
+            }
+
+            directTargetTransform.position = new Vector3(xMeters, yMeters, zMeters);
+            directTargetTransform.rotation = Quaternion.Euler(-tiltDeg, panDeg, rollDeg);
+            if (directTargetCamera == null)
+            {
+                return;
+            }
+
+            directTargetCamera.usePhysicalProperties = true;
+            directTargetCamera.focalLength = focalLengthMm;
+            directTargetCamera.focusDistance = focusDistanceMeters;
+        }
+
+        private static Camera FindContextCamera(GameObject context)
+        {
+            if (context == null)
+            {
+                return UnityEngine.Object.FindFirstObjectByType<Camera>();
+            }
+
+            return context.GetComponent<Camera>() ?? context.GetComponentInParent<Camera>() ?? context.GetComponentInChildren<Camera>(true);
         }
 
         private static float NormalizeSignedAngle(float angle)
@@ -413,7 +556,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
 
         private void DrawRuntimeDiagnostics()
         {
-            if (targetInputSource == null && targetDrivenCamera == null)
+            if (targetInputSource == null && targetLoopbackReceiver == null && targetDrivenCamera == null && targetController == null)
             {
                 return;
             }
@@ -426,6 +569,14 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 EditorGUILayout.LabelField($"Input Received: {targetInputSource.ReceivedCount}");
                 EditorGUILayout.LabelField($"Input Remote: {targetInputSource.LastRemoteEndpoint}");
                 EditorGUILayout.LabelField($"Input Packet: {targetInputSource.LastPacketHex}");
+            }
+
+            if (targetLoopbackReceiver != null)
+            {
+                EditorGUILayout.LabelField($"Loopback Bound: {targetLoopbackReceiver.IsBound}");
+                EditorGUILayout.LabelField($"Loopback Received: {targetLoopbackReceiver.ReceivedCount}");
+                EditorGUILayout.LabelField($"Loopback Remote: {targetLoopbackReceiver.LastRemoteEndpoint}");
+                EditorGUILayout.LabelField($"Loopback Packet: {targetLoopbackReceiver.LastPacketHex}");
             }
 
             if (targetDrivenCamera != null)

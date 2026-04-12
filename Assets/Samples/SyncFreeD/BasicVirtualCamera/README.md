@@ -24,3 +24,4 @@
 5. `Sample Visual Rig` の黄色の `Center Tower`、緑の `Near Target`、紫の `Far Target` が見えることを確認します。
 6. Camera を動かしたときに、これらの marker の見え方と遠近感が変わることを確認します。
 7. 画面左上の packet preview と `127.0.0.1:40000` への UDP 送信を確認します。
+8. `Tools/SyncFreeD/Debug Controller` を開き、`Pan +` や `Zoom +` を押して `Main Camera` の transform / lens が変わることを確認します。

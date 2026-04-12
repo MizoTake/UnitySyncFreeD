@@ -24,3 +24,4 @@
 5. `Sample Visual Rig` の黄色の `Center Tower` と青/赤の左右 marker が camera movement に応じて変化することを確認します。
 6. `Sample Debug HUD` の `SyncFreeDPacketPreviewBehaviour` と `SyncDiagnosticsBehaviour` を確認します。
 7. packet preview、diagnostics、recorded frame count、checksum、user area、network warning が期待通りに更新されることを確認します。
+8. `Tools/SyncFreeD/Debug Controller` を開き、`Pan +` や `Zoom +` を押して `Output Inspector Camera` の transform / lens が変わることを確認します。

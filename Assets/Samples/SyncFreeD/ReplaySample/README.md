@@ -26,3 +26,4 @@
 6. `Sample Visual Rig` を見ながら `Prev` / `Next` でフレーム送りし、黄色の `Center Tower`、紫の `Far Target`、奥の `Depth Pole` の見え方が段階的に切り替わることを確認します。
 7. JSON 読み込み済みの姿勢、packet preview、diagnostics が切り替わることを確認します。
 8. CSV を確認したい場合は `ReplayTrack.csv` に差し替えて `Reload` を押します。
+9. `Tools/SyncFreeD/Debug Controller` を開き、`Pan +` や `Zoom +` を押して `Replay Camera` の transform / lens が変わることを確認します。

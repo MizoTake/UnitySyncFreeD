@@ -24,7 +24,7 @@
 2. `Scenes/FreeDReceiveSample.unity` を開きます。
 3. `Sample Input` が `FreeDMulticastInput` preset を参照していることを確認します。
 4. Play Mode に入ります。
-5. Game view は `FreeD Driven Camera` の映像です。Editor の `Tools/SyncFreeD/Debug Controller` を開くと scene 上の `FreeDInputSourceBehaviour` を自動検出して送信先がそろいます。
-6. pan / tilt / zoom のボタンで Free-D を送ると、`Sample Visual Rig` の `Near Target`、`Center Tower`、`Depth Pole` の見え方が変わることを確認します。
+5. Game view は `FreeD Driven Camera` の映像です。Editor の `Tools/SyncFreeD/Debug Controller` を開くと scene 上の `FreeDInputSourceBehaviour` と `FreeD Driven Camera` を自動検出します。
+6. pan / tilt / zoom のボタンで Free-D を送ると、`FreeD Driven Camera` の transform / lens と `Sample Visual Rig` の `Near Target`、`Center Tower`、`Depth Pole` の見え方が変わることを確認します。
 7. `com.unity.postprocessing` が project に入っている場合、`BuiltinPostProcessDepthOfFieldTargetBehaviour` が `PostProcessLayer` / `PostProcessVolume` / `DepthOfField` を自動で組みます。`Focus +` / `Focus -` の操作に応じて被写界深度も変わります。
 8. multicast group / port を変える場合は `FreeDMulticastInput` preset 側を編集します。

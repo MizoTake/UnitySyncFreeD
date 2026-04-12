@@ -24,6 +24,12 @@
 
 camera が想定通りに動くと、左右 marker の相対位置、`Near Target` と `Far Target` の遠近感、`Center Line` に対する構図が分かりやすく変化します。
 
+## Debug Controller
+
+- `Tools/SyncFreeD/Debug Controller` は全 sample scene で使えます。
+- `FreeDReceiveSample` のように `FreeDInputSourceBehaviour` がある sample では、その待受設定に向けて Free-D packet を送り、受信 camera の transform / lens 反映を確認できます。
+- 送信系 sample や controller sample では、window が対象 camera を直接 debug apply するため、Play Mode 中に pan / tilt / zoom を触ると camera transform の変化をすぐ確認できます。
+
 ## Free-D 処理ごとの対応
 
 ### 1. Canonical State 生成

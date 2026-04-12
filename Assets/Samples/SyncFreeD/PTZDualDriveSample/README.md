@@ -19,3 +19,4 @@
 3. `VISCA Command Target` と `VISCA Observed Target` の 2 つの目標を確認します。
 4. Play Mode に入ります。
 5. `VISCA Command Target` と `VISCA Observed Target` の差が `DualDrive` でどう補正されるかを packet preview と diagnostics で確認します。
+6. `Tools/SyncFreeD/Debug Controller` を開き、`Pan +` や `Zoom +` を押して `PTZ DualDrive Camera` の transform / lens が変わることを確認します。

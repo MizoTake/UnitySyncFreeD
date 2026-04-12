@@ -22,3 +22,4 @@
 4. Play Mode に入ります。
 5. `Sample Visual Rig` の青い `Left Marker`、黄色の `Center Tower`、赤い `Right Marker` が視界内で相対移動することを確認します。
 6. `TrackerCameraSourceBehaviour` から生成された状態と packet preview、diagnostics を確認します。
+7. `Tools/SyncFreeD/Debug Controller` を開き、`Pan +` や `Tilt +` を押して `Tracked Camera` の transform / lens が変わることを確認します。

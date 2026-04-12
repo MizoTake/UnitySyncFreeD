@@ -36,3 +36,4 @@
 4. Play Mode に入ります。
 5. `Sample Visual Rig` を見ながらキー操作で camera を動かし、緑の `Near Target`、黄色の `Center Tower`、奥の `Depth Pole` の見え方が大きく変わることを確認します。
 6. packet preview と diagnostics、loopback 受信が更新されることを確認します。
+7. `Tools/SyncFreeD/Debug Controller` を開くと `FreeD Controller Camera` を直接 debug apply できるので、`Pan +` や `Zoom +` でも camera transform / lens の変化を確認できます。

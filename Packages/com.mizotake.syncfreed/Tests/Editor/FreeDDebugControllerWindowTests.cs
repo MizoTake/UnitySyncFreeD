@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Linq;
+using MizoTake.SyncFreeD.Editor.Support;
 using MizoTake.SyncFreeD.Editor.Windows;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.Tests.Editor
@@ -148,6 +151,89 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             }
         }
 
+        [Test]
+        public void SetTargetForDebug_WithControllerAndSeparatedLoopbackReceiver_SendsPacketToLoopbackPort()
+        {
+            const int port = 41043;
+            var controllerObject = new GameObject("Debug Controller Camera");
+            controllerObject.AddComponent<Camera>();
+            controllerObject.AddComponent<FreeDControllerBehaviour>();
+            var receiverObject = new GameObject("Debug Controller Loopback Receiver");
+            var loopbackReceiver = receiverObject.AddComponent<FreeDLoopbackReceiverBehaviour>();
+            SetPrivateField(loopbackReceiver, "bindAddress", "127.0.0.1");
+            SetPrivateField(loopbackReceiver, "listenPort", port);
+            receiverObject.SetActive(false);
+            receiverObject.SetActive(true);
+            EnsureLoopbackReceiverBound(loopbackReceiver);
+            var window = EditorWindow.GetWindow<FreeDDebugControllerWindow>();
+            try
+            {
+                window.SetTargetForDebug(controllerObject);
+
+                Assert.That(window.SendCurrentPacketForDebug(), Is.True);
+
+                PumpLoopbackReceiver(loopbackReceiver, 40);
+
+                Assert.That(loopbackReceiver.ReceivedCount, Is.GreaterThan(0));
+                Assert.That(loopbackReceiver.LastPacket.Length, Is.EqualTo(29));
+                Assert.That(loopbackReceiver.LastPacket[0], Is.EqualTo(0xD1));
+            }
+            finally
+            {
+                window.Close();
+                Object.DestroyImmediate(receiverObject);
+                Object.DestroyImmediate(controllerObject);
+            }
+        }
+
+        [TestCase("Assets/Samples/SyncFreeD/BasicVirtualCamera/Scenes/BasicVirtualCamera.unity", "Main Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/ExternalTrackerSample/Scenes/ExternalTrackerSample.unity", "Tracked Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/FreeDControllerSample/Scenes/FreeDControllerSample.unity", "FreeD Controller Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/FreeDReceiveSample/Scenes/FreeDReceiveSample.unity", "FreeD Driven Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/OutputInspectorSample/Scenes/OutputInspectorSample.unity", "Output Inspector Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/PTZDualDriveSample/Scenes/PTZDualDriveSample.unity", "PTZ DualDrive Camera")]
+        [TestCase("Assets/Samples/SyncFreeD/ReplaySample/Scenes/ReplaySample.unity", "Replay Camera")]
+        public void SendCurrentPacketForDebug_WithSampleSceneContext_MovesCameraTransform(string scenePath, string cameraName)
+        {
+            var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            var roots = scene.GetRootGameObjects();
+            var cameraObject = roots.FirstOrDefault(root => root.name == cameraName);
+            Assert.That(cameraObject, Is.Not.Null, $"Camera root not found: {scenePath}");
+            var camera = cameraObject.GetComponent<Camera>();
+            Assert.That(camera, Is.Not.Null, $"Camera component missing: {scenePath}");
+            var inputSource = SyncFreeDSupportSummary.FindInputSourceBehaviour(cameraObject);
+            var drivenCamera = SyncFreeDSupportSummary.FindDrivenCameraBehaviour(cameraObject);
+            var window = EditorWindow.GetWindow<FreeDDebugControllerWindow>();
+            try
+            {
+                window.SetTargetForDebug(cameraObject);
+                SetPrivateField(window, "panDeg", 30f);
+                SetPrivateField(window, "tiltDeg", -12f);
+                SetPrivateField(window, "rollDeg", 4f);
+                SetPrivateField(window, "xMeters", 1.25f);
+                SetPrivateField(window, "yMeters", 2.5f);
+                SetPrivateField(window, "zMeters", -6f);
+                SetPrivateField(window, "focalLengthMm", 80f);
+                SetPrivateField(window, "focusDistanceMeters", 6f);
+
+                Assert.That(window.SendCurrentPacketForDebug(), Is.True, $"Debug packet send failed: {scenePath}");
+
+                PumpSceneTargets(inputSource, drivenCamera);
+
+                Assert.That(cameraObject.transform.position.x, Is.EqualTo(1.25f).Within(0.02f), $"Position X mismatch: {scenePath}");
+                Assert.That(cameraObject.transform.position.y, Is.EqualTo(2.5f).Within(0.02f), $"Position Y mismatch: {scenePath}");
+                Assert.That(cameraObject.transform.position.z, Is.EqualTo(-6f).Within(0.02f), $"Position Z mismatch: {scenePath}");
+                Assert.That(NormalizeEulerY(cameraObject.transform.eulerAngles.y), Is.EqualTo(30f).Within(0.2f), $"Yaw mismatch: {scenePath}");
+                Assert.That(camera.usePhysicalProperties, Is.True, $"Physical camera should be enabled: {scenePath}");
+                Assert.That(camera.focalLength, Is.EqualTo(80f).Within(0.01f), $"Focal length mismatch: {scenePath}");
+                Assert.That(camera.focusDistance, Is.EqualTo(6f).Within(0.01f), $"Focus distance mismatch: {scenePath}");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+
         private static void SetPrivateField(Object target, string fieldName, object value)
         {
             var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
@@ -181,6 +267,76 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             var onEnableMethod = typeof(FreeDInputSourceBehaviour).GetMethod("OnEnable", BindingFlags.Instance | BindingFlags.NonPublic);
             onEnableMethod.Invoke(inputSource, null);
             Assert.That(inputSource.IsBound, Is.True, "FreeDInputSourceBehaviour failed to bind.");
+        }
+
+        private static void PumpLoopbackReceiver(FreeDLoopbackReceiverBehaviour loopbackReceiver, int maxAttempts)
+        {
+            var updateMethod = typeof(FreeDLoopbackReceiverBehaviour).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                updateMethod.Invoke(loopbackReceiver, null);
+                if (loopbackReceiver.ReceivedCount > 0)
+                {
+                    return;
+                }
+
+                System.Threading.Thread.Sleep(10);
+            }
+
+            Assert.Fail("FreeDLoopbackReceiverBehaviour did not receive a packet.");
+        }
+
+        private static void EnsureLoopbackReceiverBound(FreeDLoopbackReceiverBehaviour loopbackReceiver)
+        {
+            if (loopbackReceiver.IsBound)
+            {
+                return;
+            }
+
+            var onEnableMethod = typeof(FreeDLoopbackReceiverBehaviour).GetMethod("OnEnable", BindingFlags.Instance | BindingFlags.NonPublic);
+            onEnableMethod.Invoke(loopbackReceiver, null);
+            Assert.That(loopbackReceiver.IsBound, Is.True, "FreeDLoopbackReceiverBehaviour failed to bind.");
+        }
+
+        private static void PumpSceneTargets(FreeDInputSourceBehaviour inputSource, FreeDDrivenCameraBehaviour drivenCamera)
+        {
+            if (inputSource == null && drivenCamera == null)
+            {
+                return;
+            }
+
+            if (inputSource != null)
+            {
+                EnsureInputSourceBound(inputSource);
+            }
+
+            var updateMethod = typeof(FreeDInputSourceBehaviour).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
+            for (var attempt = 0; attempt < 60; attempt++)
+            {
+                if (inputSource != null)
+                {
+                    updateMethod.Invoke(inputSource, null);
+                }
+
+                if (drivenCamera == null)
+                {
+                    if (inputSource == null || inputSource.ReceivedCount > 0)
+                    {
+                        return;
+                    }
+                }
+                else if (drivenCamera.ApplyLatestFrame())
+                {
+                    return;
+                }
+
+                System.Threading.Thread.Sleep(10);
+            }
+        }
+
+        private static float NormalizeEulerY(float angle)
+        {
+            return Mathf.Repeat(angle + 180f, 360f) - 180f;
         }
     }
 }
