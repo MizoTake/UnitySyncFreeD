@@ -3,6 +3,7 @@ namespace MizoTake.SyncFreeD.Core.Models
     public sealed class FirmwareBehaviorProfile
     {
         public string VersionLabel = string.Empty;
+        public int MaxUnicastDestinationCount = 1;
         public bool SupportsMultiUnicast;
         public bool SupportsMulticast;
         public bool UsesImageSensorBasedOrientation;

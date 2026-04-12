@@ -69,6 +69,44 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator Update_ReceivesMultipleCameraIdsOnSamePort_WhenFiltersDiffer()
+        {
+            const int port = 41022;
+            var receiverOneObject = new GameObject("FreeD Input Receiver One");
+            var receiverOne = receiverOneObject.AddComponent<FreeDInputSourceBehaviour>();
+            SetPrivateField(receiverOne, "listenPort", port);
+            SetPrivateField(receiverOne, "cameraIdFilter", 7);
+            receiverOneObject.SetActive(false);
+            receiverOneObject.SetActive(true);
+
+            var receiverTwoObject = new GameObject("FreeD Input Receiver Two");
+            var receiverTwo = receiverTwoObject.AddComponent<FreeDInputSourceBehaviour>();
+            SetPrivateField(receiverTwo, "listenPort", port);
+            SetPrivateField(receiverTwo, "cameraIdFilter", 8);
+            receiverTwoObject.SetActive(false);
+            receiverTwoObject.SetActive(true);
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(CreatePacket(7, 10f, 0f, 0f, 100d, 200d, 300d, 35d, 4d, 2.8d, 1), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+                udpClient.Send(CreatePacket(8, -10f, 0f, 0f, 400d, 500d, 600d, 55d, 6d, 4d, 2), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilReceived(receiverOne, 60);
+            yield return WaitUntilReceived(receiverTwo, 60);
+
+            Assert.That(receiverOne.TryGetObservedFrame(out var frameOne), Is.True);
+            Assert.That(receiverTwo.TryGetObservedFrame(out var frameTwo), Is.True);
+            Assert.That(frameOne.CameraId, Is.EqualTo(7));
+            Assert.That(frameTwo.CameraId, Is.EqualTo(8));
+            Assert.That(frameOne.Lens.FocalLengthMm, Is.EqualTo(35d).Within(0.001d));
+            Assert.That(frameTwo.Lens.FocalLengthMm, Is.EqualTo(55d).Within(0.001d));
+
+            Object.Destroy(receiverOneObject);
+            Object.Destroy(receiverTwoObject);
+        }
+
+        [UnityTest]
         public IEnumerator CaptureCommandFrame_DelegatesToConfiguredCommandSource()
         {
             const int port = 41025;

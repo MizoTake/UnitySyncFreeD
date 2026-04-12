@@ -14,7 +14,12 @@ namespace MizoTake.SyncFreeD.Networking
             switch (sendMode)
             {
                 case PacketSendMode.MultiDestinationUnicast:
-                    return profile.SupportsMultiUnicast ? string.Empty : "firmware preset では Multi Destination Unicast をサポートしません。";
+                    if (!profile.SupportsMultiUnicast)
+                    {
+                        return "firmware preset では Multi Destination Unicast をサポートしません。";
+                    }
+
+                    return profile.MaxUnicastDestinationCount > 1 ? string.Empty : "firmware preset では Multi Destination Unicast は 1 送信先までです。";
                 case PacketSendMode.Multicast:
                     return profile.SupportsMulticast ? string.Empty : "firmware preset では Multicast をサポートしません。";
                 case PacketSendMode.SingleDestinationUnicast:

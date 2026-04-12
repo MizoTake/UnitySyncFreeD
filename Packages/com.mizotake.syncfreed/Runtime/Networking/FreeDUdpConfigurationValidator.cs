@@ -9,10 +9,20 @@ namespace MizoTake.SyncFreeD.Networking
     {
         public static string Validate(PacketSendMode sendMode, string bindAddress, string destinationIpAddress, int destinationPort, FreeDUdpDestination[] additionalDestinations, string multicastGroupIpAddress, int multicastPort, string multicastInterfaceAddress, int socketBufferSize, int cameraIdFilter)
         {
-            return Validate(sendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, socketBufferSize, cameraIdFilter, FreeDUdpNetworkInterfaceUtility.GetIPv4Interfaces());
+            return Validate(sendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, 1, socketBufferSize, cameraIdFilter, FreeDUdpNetworkInterfaceUtility.GetIPv4Interfaces());
         }
 
         public static string Validate(PacketSendMode sendMode, string bindAddress, string destinationIpAddress, int destinationPort, FreeDUdpDestination[] additionalDestinations, string multicastGroupIpAddress, int multicastPort, string multicastInterfaceAddress, int socketBufferSize, int cameraIdFilter, System.Collections.Generic.IReadOnlyList<FreeDUdpNetworkInterfaceInfo> interfaces)
+        {
+            return Validate(sendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, 1, socketBufferSize, cameraIdFilter, interfaces);
+        }
+
+        public static string Validate(PacketSendMode sendMode, string bindAddress, string destinationIpAddress, int destinationPort, FreeDUdpDestination[] additionalDestinations, string multicastGroupIpAddress, int multicastPort, string multicastInterfaceAddress, int multicastTtl, int socketBufferSize, int cameraIdFilter)
+        {
+            return Validate(sendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, multicastTtl, socketBufferSize, cameraIdFilter, FreeDUdpNetworkInterfaceUtility.GetIPv4Interfaces());
+        }
+
+        public static string Validate(PacketSendMode sendMode, string bindAddress, string destinationIpAddress, int destinationPort, FreeDUdpDestination[] additionalDestinations, string multicastGroupIpAddress, int multicastPort, string multicastInterfaceAddress, int multicastTtl, int socketBufferSize, int cameraIdFilter, System.Collections.Generic.IReadOnlyList<FreeDUdpNetworkInterfaceInfo> interfaces)
         {
             if (!string.IsNullOrWhiteSpace(bindAddress) && !IPAddress.TryParse(bindAddress, out _))
             {
@@ -82,6 +92,11 @@ namespace MizoTake.SyncFreeD.Networking
                 if (!IsValidPort(multicastPort))
                 {
                     return "Multicast Port は 1 から 65535 の範囲である必要があります。";
+                }
+
+                if (multicastTtl < 1 || multicastTtl > 255)
+                {
+                    return "Multicast TTL は 1 から 255 の範囲である必要があります。";
                 }
 
                 var firstByte = groupAddress.GetAddressBytes()[0];

@@ -39,7 +39,7 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         [Test]
         public void FreeDReceiveReadme_DescribesReceiveFlow()
         {
-            AssertReadmeContains("Assets/Samples/SyncFreeD/FreeDReceiveSample/README.md", "multicast", "CG camera", "focal length", "focus distance", "Sample Input");
+            AssertReadmeContains("Assets/Samples/SyncFreeD/FreeDReceiveSample/README.md", "multicast", "CG camera", "focal length", "focus distance", "Sample Input", "Camera ID", "同じ UDP port");
         }
 
         [Test]

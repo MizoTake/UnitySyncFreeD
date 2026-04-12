@@ -29,5 +29,13 @@ namespace MizoTake.SyncFreeD.Tests.Editor
 
             Assert.That(warning, Does.Contain("Multi Destination Unicast"));
         }
+
+        [Test]
+        public void Validate_ReturnsWarning_WhenMaxUnicastDestinationCountIsOne()
+        {
+            var warning = FirmwareBehaviorProfileValidator.Validate(new FirmwareBehaviorProfile { SupportsMultiUnicast = true, MaxUnicastDestinationCount = 1 }, PacketSendMode.MultiDestinationUnicast);
+
+            Assert.That(warning, Does.Contain("1 送信先"));
+        }
     }
 }

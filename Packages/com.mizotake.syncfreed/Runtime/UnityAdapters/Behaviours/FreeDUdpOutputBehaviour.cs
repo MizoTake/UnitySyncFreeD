@@ -19,8 +19,9 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private FreeDUdpDestination[] additionalDestinations = Array.Empty<FreeDUdpDestination>();
         [SerializeField] private string multicastGroupIpAddress = "239.0.0.1";
         [SerializeField] private int multicastPort = 40000;
+        [SerializeField] private int multicastTtl = 1;
         [SerializeField] private string bindAddress = string.Empty;
-        [SerializeField] private int socketBufferSize = 0;
+        [SerializeField] private int socketBufferSize;
         [SerializeField] private int cameraIdFilter = -1;
         [SerializeField] private bool joinMulticastGroup = true;
         [SerializeField] private string multicastInterfaceAddress = string.Empty;
@@ -51,11 +52,13 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public int CameraIdFilter => cameraIdFilter;
         public string MulticastGroupIpAddress => multicastGroupIpAddress;
         public int MulticastPort => multicastPort;
+        public int MulticastTtl => multicastTtl;
         public bool JoinMulticastGroup => joinMulticastGroup;
         public string MulticastInterfaceAddress => multicastInterfaceAddress;
         public FreeDUdpOutputProfileAsset OutputProfileAsset => outputProfileAsset;
         public bool ApplyProfileOnEnable => applyProfileOnEnable;
-        public string ConfigurationWarning => FreeDUdpConfigurationValidator.Validate(packetSendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, socketBufferSize, cameraIdFilter);
+        public PacketSendMode LastEffectiveSendMode { get; private set; } = PacketSendMode.SingleDestinationUnicast;
+        public string ConfigurationWarning => FreeDUdpConfigurationValidator.Validate(packetSendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, multicastTtl, socketBufferSize, cameraIdFilter);
         public bool HasConfigurationWarning => !string.IsNullOrEmpty(ConfigurationWarning);
 
         private void Awake()
@@ -106,6 +109,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             additionalDestinations = CloneDestinations(profile.AdditionalDestinations);
             multicastGroupIpAddress = profile.MulticastGroupIpAddress ?? "239.0.0.1";
             multicastPort = profile.MulticastPort;
+            multicastTtl = profile.MulticastTtl;
             bindAddress = profile.BindAddress ?? string.Empty;
             socketBufferSize = profile.SocketBufferSize;
             cameraIdFilter = profile.CameraIdFilter;
@@ -115,11 +119,17 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public void Send(in CameraSyncState state)
         {
+            Send(state, packetSendMode, int.MaxValue);
+        }
+
+        public void Send(in CameraSyncState state, PacketSendMode effectiveSendMode, int additionalDestinationLimit)
+        {
             if (cameraIdFilter >= 0 && state.CameraId != cameraIdFilter)
             {
                 LastSendSkippedByFilter = true;
                 LastSendSuccessCount = 0;
                 LastRequestedDestinationCount = 0;
+                LastEffectiveSendMode = effectiveSendMode;
                 lastDestinationDiagnostics.Clear();
                 LastSendSpreadMicroseconds = 0L;
                 return;
@@ -130,21 +140,22 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             packetBuilder.Build(state, packetBuffer);
             LastPacketHex = BitConverter.ToString(packetBuffer);
             LastSendSuccessCount = 0;
-            LastRequestedDestinationCount = GetRequestedDestinationCount();
+            LastEffectiveSendMode = effectiveSendMode;
+            LastRequestedDestinationCount = GetRequestedDestinationCount(effectiveSendMode, additionalDestinationLimit);
             lastDestinationDiagnostics.Clear();
             LastSendSpreadMicroseconds = 0L;
             var sendStartTimestamp = Stopwatch.GetTimestamp();
-            switch (packetSendMode)
+            switch (effectiveSendMode)
             {
                 case PacketSendMode.SingleDestinationUnicast:
                     SendPrimaryDestination(sendStartTimestamp);
                     break;
                 case PacketSendMode.MultiDestinationUnicast:
                     SendPrimaryDestination(sendStartTimestamp);
-                    SendAdditionalDestinations(sendStartTimestamp);
+                    SendAdditionalDestinations(sendStartTimestamp, additionalDestinationLimit);
                     break;
                 case PacketSendMode.Multicast:
-                    transport.ConfigureMulticast(multicastGroupIpAddress, multicastInterfaceAddress, joinMulticastGroup);
+                    transport.ConfigureMulticast(multicastGroupIpAddress, multicastInterfaceAddress, joinMulticastGroup, multicastTtl);
                     if (TrySend(multicastGroupIpAddress, multicastPort, sendStartTimestamp, 0))
                     {
                         LastSendSuccessCount++;
@@ -158,7 +169,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public int GetConfiguredDestinationCount()
         {
-            return GetRequestedDestinationCount();
+            return GetRequestedDestinationCount(packetSendMode, int.MaxValue);
         }
 
         private void EnsureSocket()
@@ -191,9 +202,10 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
         }
 
-        private void SendAdditionalDestinations(long sendStartTimestamp)
+        private void SendAdditionalDestinations(long sendStartTimestamp, int additionalDestinationLimit)
         {
             var order = 1;
+            var remaining = additionalDestinationLimit < 0 ? 0 : additionalDestinationLimit;
             for (var i = 0; i < additionalDestinations.Length; i++)
             {
                 var destination = additionalDestinations[i];
@@ -202,21 +214,27 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                     continue;
                 }
 
+                if (remaining <= 0)
+                {
+                    break;
+                }
+
                 if (TrySend(destination.IpAddress, destination.Port, sendStartTimestamp, order))
                 {
                     LastSendSuccessCount++;
                 }
 
                 order++;
+                remaining--;
             }
         }
 
-        private int GetRequestedDestinationCount()
+        private int GetRequestedDestinationCount(PacketSendMode sendMode, int additionalDestinationLimit)
         {
-            switch (packetSendMode)
+            switch (sendMode)
             {
                 case PacketSendMode.MultiDestinationUnicast:
-                    return 1 + CountEnabledAdditionalDestinations();
+                    return 1 + CountEnabledAdditionalDestinations(additionalDestinationLimit);
                 case PacketSendMode.Multicast:
                     return 1;
                 case PacketSendMode.SingleDestinationUnicast:
@@ -225,14 +243,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
         }
 
-        private int CountEnabledAdditionalDestinations()
+        private int CountEnabledAdditionalDestinations(int additionalDestinationLimit)
         {
+            if (additionalDestinationLimit <= 0)
+            {
+                return 0;
+            }
+
             var count = 0;
             for (var i = 0; i < additionalDestinations.Length; i++)
             {
                 if (additionalDestinations[i].Enabled)
                 {
                     count++;
+                    if (count >= additionalDestinationLimit)
+                    {
+                        break;
+                    }
                 }
             }
 

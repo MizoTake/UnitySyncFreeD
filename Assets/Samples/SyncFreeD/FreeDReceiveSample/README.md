@@ -6,6 +6,7 @@
 
 - Free-D multicast 受信
 - 受信した pose / focal length / focus distance の CG camera 反映
+- 同じ UDP port を複数の `FreeDInputSourceBehaviour` で共有し、`Camera ID` ごとに受信先を分ける運用確認
 - Builtin Post Processing Stack v2 が入っている環境での `DepthOfField` focus distance 反映
 
 シーン構成:
@@ -13,6 +14,11 @@
 - `FreeD Driven Camera`: CG camera と apply behaviour
 - `Sample Input`: `FreeDMulticastInput` preset を参照する Free-D input source
 - `Sample Visual Rig`: 受信結果の見え方を確認する marker 群
+
+複数カメラ運用:
+
+- 同じ UDP port を使う複数入力でも `Camera ID Filter` を変えると受信先を分けられます
+- A/B 系統を作るときは `FreeDInputSourceBehaviour` を複製し、`Camera ID Filter` だけ切り替えます
 
 1. sample を import します。
 2. `Scenes/FreeDReceiveSample.unity` を開きます。

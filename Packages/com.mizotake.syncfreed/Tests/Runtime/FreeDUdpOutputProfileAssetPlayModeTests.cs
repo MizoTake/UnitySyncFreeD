@@ -24,6 +24,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
                 new FreeDUdpDestination { IpAddress = "127.0.0.1", Port = 41001, Enabled = true }
             };
             profile.Value.CameraIdFilter = 12;
+            profile.Value.MulticastTtl = 32;
 
             output.SetOutputProfileAsset(profile, true);
             yield return null;
@@ -31,6 +32,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(output.SendMode, Is.EqualTo(PacketSendMode.MultiDestinationUnicast));
             Assert.That(output.DestinationPort, Is.EqualTo(41000));
             Assert.That(output.CameraIdFilter, Is.EqualTo(12));
+            Assert.That(output.MulticastTtl, Is.EqualTo(32));
             Assert.That(output.GetConfiguredDestinationCount(), Is.EqualTo(2));
 
             Object.Destroy(profile);

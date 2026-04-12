@@ -1,9 +1,9 @@
 using System;
 using System.Net;
-using System.Net.Sockets;
 using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.Core.Outputs;
+using MizoTake.SyncFreeD.Networking;
 using MizoTake.SyncFreeD.ScriptableObjects;
 using UnityEngine;
 
@@ -25,7 +25,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private MonoBehaviour commandSourceBehaviour;
 
         private readonly FreeDPacketParser packetParser = new FreeDPacketParser();
-        private UdpClient udpClient;
+        private FreeDUdpReceiveHub receiveHub;
         private CameraObservedFrame lastFrame;
 
         public string SourceId => sourceId;
@@ -36,7 +36,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public string LastBindError { get; private set; } = string.Empty;
         public int ReceivedCount { get; private set; }
         public int DroppedPacketCount { get; private set; }
-        public bool IsBound => udpClient != null;
+        public bool IsBound => receiveHub != null && receiveHub.IsBound;
         public FreeDUdpInputProfileAsset InputProfileAsset => inputProfileAsset;
         public bool ApplyProfileOnEnable => applyProfileOnEnable;
         public int ListenPort => listenPort;
@@ -83,40 +83,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         private void Update()
         {
-            if (udpClient == null || udpClient.Available <= 0)
-            {
-                return;
-            }
-
-            while (udpClient != null && udpClient.Available > 0)
-            {
-                try
-                {
-                    var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
-                    var packet = udpClient.Receive(ref remoteEndPoint);
-                    if (!packetParser.TryParse(packet, validateChecksum, out var frame))
-                    {
-                        DroppedPacketCount++;
-                        continue;
-                    }
-
-                    if (cameraIdFilter >= 0 && frame.CameraId != cameraIdFilter)
-                    {
-                        DroppedPacketCount++;
-                        continue;
-                    }
-
-                    frame.SourceId = sourceId;
-                    lastFrame = frame;
-                    LastPacketHex = BitConverter.ToString(packet);
-                    LastRemoteEndpoint = remoteEndPoint.ToString();
-                    ReceivedCount++;
-                }
-                catch (SocketException)
-                {
-                    break;
-                }
-            }
+            receiveHub?.Poll();
         }
 
         public bool TryGetObservedState(out CameraObservedFrame frame)
@@ -165,14 +132,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         private void OnDisable()
         {
-            udpClient?.Dispose();
-            udpClient = null;
+            receiveHub?.Release(HandleReceivedPacket);
+            receiveHub = null;
         }
 
         private void Rebind()
         {
-            udpClient?.Dispose();
-            udpClient = null;
+            receiveHub?.Release(HandleReceivedPacket);
+            receiveHub = null;
             LastBindError = string.Empty;
             TryBind();
         }
@@ -180,41 +147,16 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private void TryBind()
         {
             LastBindError = string.Empty;
-            try
+            receiveHub = FreeDUdpReceiveHub.Acquire(bindAddress, listenPort, joinMulticastGroup, multicastGroupIpAddress, multicastInterfaceAddress, HandleReceivedPacket, out var bindError);
+            if (receiveHub == null)
             {
-                var localAddress = string.IsNullOrWhiteSpace(bindAddress) ? IPAddress.Any : IPAddress.Parse(bindAddress);
-                udpClient = new UdpClient(AddressFamily.InterNetwork);
-                udpClient.Client.ExclusiveAddressUse = false;
-                udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                udpClient.Client.Bind(new IPEndPoint(localAddress, listenPort));
-                udpClient.Client.Blocking = false;
-                if (joinMulticastGroup && !string.IsNullOrWhiteSpace(multicastGroupIpAddress))
-                {
-                    try
-                    {
-                        var multicastAddress = IPAddress.Parse(multicastGroupIpAddress);
-                        if (string.IsNullOrWhiteSpace(multicastInterfaceAddress))
-                        {
-                            udpClient.JoinMulticastGroup(multicastAddress);
-                        }
-                        else
-                        {
-                            udpClient.JoinMulticastGroup(multicastAddress, IPAddress.Parse(multicastInterfaceAddress));
-                        }
-                    }
-                    catch (Exception exception)
-                    {
-                        LastBindError = $"Multicast join failed: {exception.Message}";
-                        Debug.LogWarning($"SyncFreeD input source multicast join failed. Unicast receive remains available: {exception.Message}", this);
-                    }
-                }
+                LastBindError = bindError ?? string.Empty;
+                Debug.LogWarning($"SyncFreeD input source failed to bind: {LastBindError}", this);
             }
-            catch (Exception exception)
+            else if (!string.IsNullOrWhiteSpace(bindError))
             {
-                LastBindError = exception.Message;
-                Debug.LogWarning($"SyncFreeD input source failed to bind: {exception.Message}", this);
-                udpClient?.Dispose();
-                udpClient = null;
+                LastBindError = bindError;
+                Debug.LogWarning($"SyncFreeD input source multicast join failed. Unicast receive remains available: {bindError}", this);
             }
         }
 
@@ -243,6 +185,27 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             return null;
+        }
+
+        private void HandleReceivedPacket(byte[] packet, IPEndPoint remoteEndPoint)
+        {
+            if (!packetParser.TryParse(packet, validateChecksum, out var frame))
+            {
+                DroppedPacketCount++;
+                return;
+            }
+
+            if (cameraIdFilter >= 0 && frame.CameraId != cameraIdFilter)
+            {
+                DroppedPacketCount++;
+                return;
+            }
+
+            frame.SourceId = sourceId;
+            lastFrame = frame;
+            LastPacketHex = BitConverter.ToString(packet);
+            LastRemoteEndpoint = remoteEndPoint.ToString();
+            ReceivedCount++;
         }
     }
 }

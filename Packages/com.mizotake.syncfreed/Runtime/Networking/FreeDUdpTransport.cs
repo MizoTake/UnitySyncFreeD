@@ -13,6 +13,7 @@ namespace MizoTake.SyncFreeD.Networking
         public int TotalSentCount { get; private set; }
         public string BoundAddress { get; }
         public int ConfiguredSocketBufferSize { get; }
+        public int ConfiguredMulticastTtl { get; private set; } = 1;
         public bool IsMulticastConfigured { get; private set; }
 
         public FreeDUdpTransport(string bindAddress = "", int socketBufferSize = 0)
@@ -36,6 +37,7 @@ namespace MizoTake.SyncFreeD.Networking
             }
 
             udpClient.MulticastLoopback = true;
+            udpClient.Ttl = (short)ConfiguredMulticastTtl;
         }
 
         public void Send(byte[] payload, string ipAddress, int port)
@@ -51,6 +53,13 @@ namespace MizoTake.SyncFreeD.Networking
 
         public void ConfigureMulticast(string multicastGroupIpAddress, string interfaceAddress, bool joinMulticastGroup)
         {
+            ConfigureMulticast(multicastGroupIpAddress, interfaceAddress, joinMulticastGroup, ConfiguredMulticastTtl);
+        }
+
+        public void ConfigureMulticast(string multicastGroupIpAddress, string interfaceAddress, bool joinMulticastGroup, int multicastTtl)
+        {
+            ConfiguredMulticastTtl = Math.Clamp(multicastTtl, 1, 255);
+            udpClient.Ttl = (short)ConfiguredMulticastTtl;
             if (!joinMulticastGroup || string.IsNullOrWhiteSpace(multicastGroupIpAddress))
             {
                 IsMulticastConfigured = false;

@@ -5,6 +5,7 @@ using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.Networking;
 using MizoTake.SyncFreeD.Core.Sync;
 using MizoTake.SyncFreeD.ScriptableObjects;
+using MizoTake.SyncFreeD.UnityAdapters.Support;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
@@ -34,10 +35,13 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private float nextFixedIntervalTime;
 
         public CameraSyncState LastState { get; private set; }
+        public CameraSyncState LastOutputState { get; private set; }
         public SyncDiagnosticsSnapshot LastDiagnostics { get; private set; }
         public int CorrectionAppliedCount { get; private set; }
         public ICameraFrameProvider SourceProvider => sourceBehaviour as ICameraFrameProvider;
         public FreeDUdpOutputBehaviour OutputBehaviour => outputBehaviour;
+        public DebugLogOutputBehaviour DebugLogOutputBehaviour => debugLogOutputBehaviour;
+        public RecordingOutputBehaviour RecordingOutputBehaviour => recordingOutputBehaviour;
         public SyncMode SyncMode => syncMode;
         public OutputPoseKind OutputPoseKind => outputPoseKind;
         public SyncTuningProfile EffectiveTuning => tuningProfileAsset != null && tuningProfileAsset.Value != null ? tuningProfileAsset.Value : tuning;
@@ -178,21 +182,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             var effectiveTuning = EffectiveTuning ?? new SyncTuningProfile();
             var result = tickProcessor.Process(new SyncTickRequest(timestampProvider.GetTimestampTicks(), observedFrame, sourceProvider.CaptureCommandFrame(), syncMode, outputPoseKind, effectiveTuning, lensProfileAsset != null ? lensProfileAsset.Value : null));
             LastState = result.State;
+            var firmwareProfile = firmwareBehaviorProfileAsset != null ? firmwareBehaviorProfileAsset.Value : null;
+            LastOutputState = FreeDOutputStateApplicator.Apply(LastState, mountProfileAsset != null ? mountProfileAsset.Value : null, firmwareProfile);
             LastDiagnostics = result.Diagnostics;
             if (LastDiagnostics.CorrectionApplied)
             {
                 CorrectionAppliedCount++;
             }
 
-            var packet = outputBehaviour.BuildPacket(LastState);
+            var packet = outputBehaviour.BuildPacket(LastOutputState);
             if (debugLogOutputBehaviour != null)
             {
-                debugLogOutputBehaviour.Send(LastState);
+                debugLogOutputBehaviour.Send(LastOutputState);
             }
 
             if (recordingOutputBehaviour != null)
             {
-                recordingOutputBehaviour.Send(LastState);
+                recordingOutputBehaviour.Send(LastOutputState);
             }
 
             if (logPacketHex)
@@ -200,7 +206,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Debug.Log(BitConverter.ToString(packet));
             }
 
-            outputBehaviour.Send(LastState);
+            var effectiveSendMode = FirmwareBehaviorRoutingResolver.ResolveSendMode(outputBehaviour.SendMode, firmwareProfile);
+            outputBehaviour.Send(LastOutputState, effectiveSendMode, FirmwareBehaviorRoutingResolver.ResolveAdditionalDestinationLimit(effectiveSendMode, firmwareProfile));
             return true;
         }
 

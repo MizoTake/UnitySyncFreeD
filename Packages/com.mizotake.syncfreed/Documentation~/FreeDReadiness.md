@@ -31,6 +31,10 @@
 - [x] multicast 運用支援 UI の厚み
 - [x] Free-D UDP 受信
 - [x] Free-D multicast 受信
+- [x] firmware preset に応じた runtime 送信経路 fallback
+- [x] mount profile の output pose 反映
+- [x] multicast TTL の設定と validation
+- [x] 同一 UDP port の複数 camera id 受信
 - [x] Free-D 受信値の CG camera pose / lens 反映
 
 ## 2. 仕様書との差分
@@ -39,7 +43,9 @@ Free-D 同期観点で大きい差分だけを残しています。
 
 - VISCA は package の実装対象から外し、Free-D 側の同期・出力・diagnostics に集中する
 - multicast は送信設定、送信順 / spread 表示、Bind / Multicast NIC 選択支援、複数 NIC 時の warning まで対応
+- firmware preset は runtime で送信 mode / unicast 宛先数 / mount 補正の適用範囲に反映する
 - Free-D input source は unicast / multicast の UDP 受信を扱い、D1 packet を pose / lens / timing に復元できる
+- Free-D input source は同一 UDP port を複数 behaviour で共有し、camera id filter ごとに同じ packet を受け分けられる
 - Free-D driven camera は受信した pose と lens を Unity Camera に反映できる
 - lens correction は `LensProfile` を使って corrected lens の `FocalLengthMm` / `ZoomNormalized` / `FocusDistanceMeters` を補完可能
 - sample scene の起動系テストはあるが、実機連携はスコープ外

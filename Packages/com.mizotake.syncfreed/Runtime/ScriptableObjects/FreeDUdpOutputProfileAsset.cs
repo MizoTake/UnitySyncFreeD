@@ -19,6 +19,7 @@ namespace MizoTake.SyncFreeD.ScriptableObjects
         public FreeDUdpDestination[] AdditionalDestinations = System.Array.Empty<FreeDUdpDestination>();
         public string MulticastGroupIpAddress = "239.0.0.1";
         public int MulticastPort = 40000;
+        public int MulticastTtl = 1;
         public string BindAddress = string.Empty;
         public int SocketBufferSize = 0;
         public int CameraIdFilter = -1;

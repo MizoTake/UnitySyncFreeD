@@ -73,13 +73,21 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         [Test]
         public void Validate_ReturnsWarningWhenBindAndMulticastInterfaceDiffer()
         {
-            var warning = FreeDUdpConfigurationValidator.Validate(PacketSendMode.Multicast, "192.168.0.10", "127.0.0.1", 40000, null, "239.0.0.1", 40000, "10.0.0.10", 0, -1, new[]
+            var warning = FreeDUdpConfigurationValidator.Validate(PacketSendMode.Multicast, "192.168.0.10", "127.0.0.1", 40000, null, "239.0.0.1", 40000, "10.0.0.10", 64, 0, -1, new[]
             {
                 new FreeDUdpNetworkInterfaceInfo("Ethernet0", "192.168.0.10"),
                 new FreeDUdpNetworkInterfaceInfo("Ethernet1", "10.0.0.10")
             });
 
             Assert.That(warning, Does.Contain("同じ NIC"));
+        }
+
+        [Test]
+        public void Validate_ReturnsWarningWhenMulticastTtlIsOutOfRange()
+        {
+            var warning = FreeDUdpConfigurationValidator.Validate(PacketSendMode.Multicast, string.Empty, "127.0.0.1", 40000, null, "239.0.0.1", 40000, string.Empty, 999, 0, -1);
+
+            Assert.That(warning, Does.Contain("Multicast TTL"));
         }
     }
 }

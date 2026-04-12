@@ -76,5 +76,17 @@ namespace MizoTake.SyncFreeD.Tests.Editor
                 Assert.That(received, Is.EqualTo(payload));
             }
         }
+
+        [Test]
+        public void ConfigureMulticast_StoresConfiguredTtl()
+        {
+            using (var transport = new FreeDUdpTransport())
+            {
+                transport.ConfigureMulticast("239.10.10.44", string.Empty, true, 32);
+
+                Assert.That(transport.IsMulticastConfigured, Is.True);
+                Assert.That(transport.ConfiguredMulticastTtl, Is.EqualTo(32));
+            }
+        }
     }
 }
