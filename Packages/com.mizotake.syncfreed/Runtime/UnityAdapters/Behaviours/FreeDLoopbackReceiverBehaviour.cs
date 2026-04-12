@@ -11,8 +11,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
     {
         [SerializeField] private FreeDUdpInputProfileAsset inputProfileAsset;
         [SerializeField] private bool applyProfileOnEnable = true;
-        [SerializeField] private string bindAddress = "127.0.0.1";
-        [SerializeField] private int listenPort = 40000;
+        private string bindAddress = "127.0.0.1";
+        private int listenPort = 40000;
 
         private UdpClient udpClient;
 

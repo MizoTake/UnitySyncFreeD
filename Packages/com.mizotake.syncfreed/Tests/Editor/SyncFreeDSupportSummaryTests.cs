@@ -56,10 +56,107 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         }
 
         [Test]
+        public void Build_WhenOutputIsAssignedFromSeparatedRoot_ReportsOutputPresent()
+        {
+            var cameraObject = new GameObject("Support Summary Separated Output Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var outputRoot = new GameObject("Support Summary Output Root");
+            var output = outputRoot.AddComponent<FreeDUdpOutputBehaviour>();
+            var outputProfile = ScriptableObject.CreateInstance<FreeDUdpOutputProfileAsset>();
+            output.SetOutputProfileAsset(outputProfile, true);
+            SetPrivateField(sync, "outputBehaviour", output);
+
+            var snapshot = SyncFreeDSupportSummary.Build(sync);
+
+            Assert.That(snapshot.HasOutput, Is.True);
+            Assert.That(snapshot.HasOutputPreset, Is.True);
+
+            Object.DestroyImmediate(outputProfile);
+            Object.DestroyImmediate(outputRoot);
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
+        public void Build_WhenLoopbackReceiverExistsOnSeparatedRoot_ReportsLoopbackPresent()
+        {
+            var cameraObject = new GameObject("Support Summary Separated Loopback Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var loopbackRoot = new GameObject("Support Summary Loopback Root");
+            loopbackRoot.AddComponent<FreeDLoopbackReceiverBehaviour>();
+
+            var snapshot = SyncFreeDSupportSummary.Build(sync);
+
+            Assert.That(snapshot.HasLoopbackReceiver, Is.True);
+
+            Object.DestroyImmediate(loopbackRoot);
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
         public void GetSampleScenePath_ReturnsAssetsSamplePath()
         {
             var path = SyncFreeDSupportSummary.GetSampleScenePath(SyncFreeDSampleId.FreeDController);
             Assert.That(path, Does.Contain("Assets/Samples/SyncFreeD/FreeDControllerSample"));
+        }
+
+        [Test]
+        public void FindSyncBehaviour_WhenSelectionIsSeparatedRoot_FallsBackToSceneSyncBehaviour()
+        {
+            var cameraObject = new GameObject("Support Resolver Sync Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var outputRoot = new GameObject("Support Resolver Output Root");
+
+            try
+            {
+                Assert.That(SyncFreeDSupportSummary.FindSyncBehaviour(outputRoot), Is.EqualTo(sync));
+            }
+            finally
+            {
+                Object.DestroyImmediate(outputRoot);
+                Object.DestroyImmediate(cameraObject);
+            }
+        }
+
+        [Test]
+        public void FindLoopbackReceiverBehaviour_WhenSelectionIsControllerRoot_FallsBackToSceneLoopbackReceiver()
+        {
+            var controllerObject = new GameObject("Support Resolver Controller Camera");
+            controllerObject.AddComponent<Camera>();
+            controllerObject.AddComponent<FreeDControllerBehaviour>();
+            var loopbackRoot = new GameObject("Support Resolver Loopback Receiver");
+            var loopbackReceiver = loopbackRoot.AddComponent<FreeDLoopbackReceiverBehaviour>();
+
+            try
+            {
+                Assert.That(SyncFreeDSupportSummary.FindLoopbackReceiverBehaviour(controllerObject), Is.EqualTo(loopbackReceiver));
+            }
+            finally
+            {
+                Object.DestroyImmediate(loopbackRoot);
+                Object.DestroyImmediate(controllerObject);
+            }
+        }
+
+        [Test]
+        public void CanOpenSampleScene_WhenPlayModeFlagIsTrue_ReturnsFalse()
+        {
+            Assert.That(SyncFreeDSupportSummary.CanOpenSampleScene(true), Is.False);
+            Assert.That(SyncFreeDSupportSummary.GetSampleSceneOpenBlockedReason(true), Does.Contain("Play Mode"));
+        }
+
+        [Test]
+        public void CanOpenSampleScene_WhenPlayModeFlagIsFalse_ReturnsTrue()
+        {
+            Assert.That(SyncFreeDSupportSummary.CanOpenSampleScene(false), Is.True);
+            Assert.That(SyncFreeDSupportSummary.GetSampleSceneOpenBlockedReason(false), Is.Empty);
         }
 
         [Test]
@@ -138,6 +235,22 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             Assert.That(SyncFreeDSupportSummary.GetRecommendedSampleId(sync), Is.EqualTo(SyncFreeDSampleId.FreeDController));
             Assert.That(SyncFreeDSupportSummary.GetRecommendedSampleReason(sync), Does.Contain("FreeDControllerSample"));
 
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
+        public void GetRecommendedSampleId_WhenSeparatedLoopbackExists_ReturnsOutputInspector()
+        {
+            var cameraObject = new GameObject("Recommended Loopback Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var loopbackRoot = new GameObject("Recommended Loopback Root");
+            loopbackRoot.AddComponent<FreeDLoopbackReceiverBehaviour>();
+
+            Assert.That(SyncFreeDSupportSummary.GetRecommendedSampleId(sync), Is.EqualTo(SyncFreeDSampleId.OutputInspector));
+
+            Object.DestroyImmediate(loopbackRoot);
             Object.DestroyImmediate(cameraObject);
         }
 

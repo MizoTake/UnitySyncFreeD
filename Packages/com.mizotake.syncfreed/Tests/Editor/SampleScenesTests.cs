@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using System.IO;
 using System.Linq;
+using MizoTake.SyncFreeD.Editor.Support;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -43,6 +44,12 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         public void FreeDReceiveSample_AssetExists()
         {
             AssertSceneExists("Assets/Samples/SyncFreeD/FreeDReceiveSample/Scenes/FreeDReceiveSample.unity");
+        }
+
+        [Test]
+        public void PTZDualDriveSample_AssetExists()
+        {
+            AssertSceneExists("Assets/Samples/SyncFreeD/PTZDualDriveSample/Scenes/PTZDualDriveSample.unity");
         }
 
         [Test]
@@ -160,6 +167,25 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             var inputSource = inputRoot.GetComponent<FreeDInputSourceBehaviour>();
             Assert.That(inputSource, Is.Not.Null, "FreeDInputSourceBehaviour missing.");
             Assert.That(inputSource.InputProfileAsset, Is.Not.Null, "FreeD input preset missing.");
+        }
+
+        [Test]
+        public void PTZDualDriveSample_ResolvesSourceAndSupportSnapshot()
+        {
+            var scene = EditorSceneManager.OpenScene("Assets/Samples/SyncFreeD/PTZDualDriveSample/Scenes/PTZDualDriveSample.unity", OpenSceneMode.Single);
+            var roots = scene.GetRootGameObjects();
+            var cameraObject = roots.First(root => root.name == "PTZ DualDrive Camera");
+            var syncBehaviour = cameraObject.GetComponent<SyncFreeDBehaviour>();
+
+            Assert.That(syncBehaviour, Is.Not.Null, "SyncFreeDBehaviour missing on PTZ DualDrive Camera.");
+            Assert.That(syncBehaviour.SourceProvider, Is.Not.Null, "PTZ DualDrive sample source is unresolved.");
+            Assert.That(syncBehaviour.OutputBehaviour, Is.Not.Null, "PTZ DualDrive sample output is unresolved.");
+
+            var snapshot = SyncFreeDSupportSummary.Build(syncBehaviour);
+            Assert.That(snapshot.HasSource, Is.True, "Support summary should detect the dual-drive source.");
+            Assert.That(snapshot.HasOutput, Is.True, "Support summary should detect the separated output root.");
+            Assert.That(snapshot.HasOutputPreset, Is.True, "Support summary should detect the output preset.");
+            Assert.That(snapshot.Tone, Is.EqualTo(SyncFreeDStatusTone.Ready), "PTZ DualDrive sample should be immediately verifiable.");
         }
 
         [Test]

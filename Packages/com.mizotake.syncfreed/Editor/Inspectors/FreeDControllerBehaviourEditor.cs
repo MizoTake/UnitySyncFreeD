@@ -11,14 +11,6 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
         private SerializedProperty controlledCameraProperty;
         private SerializedProperty profileAssetProperty;
         private SerializedProperty applyProfileOnAwakeProperty;
-        private SerializedProperty allowKeyboardControlProperty;
-        private SerializedProperty useUnscaledTimeProperty;
-        private SerializedProperty moveSpeedMetersPerSecondProperty;
-        private SerializedProperty rotateSpeedDegreesPerSecondProperty;
-        private SerializedProperty rollSpeedDegreesPerSecondProperty;
-        private SerializedProperty focalLengthSpeedMmPerSecondProperty;
-        private SerializedProperty focusDistanceSpeedMetersPerSecondProperty;
-        private SerializedProperty boostMultiplierProperty;
 
         private void OnEnable()
         {
@@ -26,14 +18,6 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             controlledCameraProperty = serializedObject.FindProperty("controlledCamera");
             profileAssetProperty = serializedObject.FindProperty("profileAsset");
             applyProfileOnAwakeProperty = serializedObject.FindProperty("applyProfileOnAwake");
-            allowKeyboardControlProperty = serializedObject.FindProperty("allowKeyboardControl");
-            useUnscaledTimeProperty = serializedObject.FindProperty("useUnscaledTime");
-            moveSpeedMetersPerSecondProperty = serializedObject.FindProperty("moveSpeedMetersPerSecond");
-            rotateSpeedDegreesPerSecondProperty = serializedObject.FindProperty("rotateSpeedDegreesPerSecond");
-            rollSpeedDegreesPerSecondProperty = serializedObject.FindProperty("rollSpeedDegreesPerSecond");
-            focalLengthSpeedMmPerSecondProperty = serializedObject.FindProperty("focalLengthSpeedMmPerSecond");
-            focusDistanceSpeedMetersPerSecondProperty = serializedObject.FindProperty("focusDistanceSpeedMetersPerSecond");
-            boostMultiplierProperty = serializedObject.FindProperty("boostMultiplier");
         }
 
         public override void OnInspectorGUI()
@@ -46,34 +30,84 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EditorGUILayout.LabelField("操作 preset", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(profileAssetProperty, new GUIContent("操作 preset Asset"));
             EditorGUILayout.PropertyField(applyProfileOnAwakeProperty, new GUIContent("開始時に preset を反映"));
-            EditorGUILayout.HelpBox("preset を使うと、サンプルごとに同じ操作感を再利用できます。", MessageType.Info);
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("基本設定", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(allowKeyboardControlProperty, new GUIContent("キーボード操作を有効にする"));
-            EditorGUILayout.PropertyField(useUnscaledTimeProperty, new GUIContent("一時停止に影響されない時間を使う"));
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("動きの速さ", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(moveSpeedMetersPerSecondProperty, new GUIContent("移動の速さ"));
-            EditorGUILayout.PropertyField(rotateSpeedDegreesPerSecondProperty, new GUIContent("向き変更の速さ"));
-            EditorGUILayout.PropertyField(rollSpeedDegreesPerSecondProperty, new GUIContent("傾き変更の速さ"));
-            EditorGUILayout.PropertyField(focalLengthSpeedMmPerSecondProperty, new GUIContent("ズーム変更の速さ"));
-            EditorGUILayout.PropertyField(focusDistanceSpeedMetersPerSecondProperty, new GUIContent("フォーカス変更の速さ"));
-            EditorGUILayout.PropertyField(boostMultiplierProperty, new GUIContent("Shift を押した時の加速倍率"));
+            EditorGUILayout.HelpBox(profileAssetProperty.objectReferenceValue != null ? "操作パラメーターは操作 preset Asset 側で編集します。" : "操作 preset Asset が未設定です。component の現在値で動作しますが、運用では Asset 参照を推奨します。", profileAssetProperty.objectReferenceValue != null ? MessageType.Info : MessageType.Warning);
             serializedObject.ApplyModifiedProperties();
 
-            if (GUILayout.Button("Apply Preset Now"))
+            using (new EditorGUI.DisabledScope(profileAssetProperty.objectReferenceValue == null))
             {
-                ((FreeDControllerBehaviour)target).ApplyProfile();
-                EditorUtility.SetDirty(target);
+                if (GUILayout.Button("Apply Preset Now"))
+                {
+                    ((FreeDControllerBehaviour)target).ApplyProfile();
+                    EditorUtility.SetDirty(target);
+                }
             }
 
-            if (GUILayout.Button("Open Debug Controller"))
+            var behaviour = (FreeDControllerBehaviour)target;
+            DrawPresetSnapshot(behaviour);
+            if (behaviour.AllowKeyboardControl)
             {
-                Windows.FreeDDebugControllerWindow.OpenWindow();
+                DrawKeyboardHelp();
             }
 
-            EditorGUILayout.Space();
-            EditorGUILayout.HelpBox("WASD/QE で移動、矢印キーで向き変更、PageUp/PageDown でズーム、Home/End でフォーカス、R で初期位置に戻します。", MessageType.None);
+            DrawTools();
+        }
+
+        private void DrawPresetSnapshot(FreeDControllerBehaviour behaviour)
+        {
+            var expanded = BeginSection("current-settings", "現在の適用値", true);
+            if (expanded)
+            {
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.Toggle("キーボード操作", behaviour.AllowKeyboardControl);
+                    EditorGUILayout.Toggle("Unscaled Time", behaviour.UseUnscaledTime);
+                    EditorGUILayout.FloatField("移動の速さ", behaviour.MoveSpeedMetersPerSecond);
+                    EditorGUILayout.FloatField("向き変更の速さ", behaviour.RotateSpeedDegreesPerSecond);
+                    EditorGUILayout.FloatField("傾き変更の速さ", behaviour.RollSpeedDegreesPerSecond);
+                    EditorGUILayout.FloatField("ズーム変更の速さ", behaviour.FocalLengthSpeedMmPerSecond);
+                    EditorGUILayout.FloatField("フォーカス変更の速さ", behaviour.FocusDistanceSpeedMetersPerSecond);
+                    EditorGUILayout.FloatField("Shift 加速倍率", behaviour.BoostMultiplier);
+                }
+            }
+
+            EndSection();
+        }
+
+        private void DrawKeyboardHelp()
+        {
+            var expanded = BeginSection("keyboard-help", "キーボード操作", false);
+            if (expanded)
+            {
+                EditorGUILayout.HelpBox("WASD/QE で移動、矢印キーで向き変更、PageUp/PageDown でズーム、Home/End でフォーカス、R で初期位置に戻します。", MessageType.None);
+            }
+
+            EndSection();
+        }
+
+        private void DrawTools()
+        {
+            var expanded = BeginSection("tools", "ツール", false);
+            if (expanded && GUILayout.Button("Open Debug Controller"))
+            {
+                var window = Windows.FreeDDebugControllerWindow.OpenWindow();
+                window.SetTargetForDebug(((FreeDControllerBehaviour)target).gameObject);
+            }
+
+            EndSection();
+        }
+
+        private bool BeginSection(string key, string label, bool defaultExpanded)
+        {
+            var stateKey = $"{nameof(FreeDControllerBehaviourEditor)}.{target.GetInstanceID()}.{key}";
+            var expanded = SessionState.GetBool(stateKey, defaultExpanded);
+            expanded = EditorGUILayout.BeginFoldoutHeaderGroup(expanded, label);
+            SessionState.SetBool(stateKey, expanded);
+            return expanded;
+        }
+
+        private static void EndSection()
+        {
+            EditorGUILayout.EndFoldoutHeaderGroup();
         }
     }
 }

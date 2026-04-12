@@ -18,6 +18,7 @@
 - `Bind Address`
 - `Socket Buffer Size`
 - `Camera ID Filter`
+- `Multicast TTL`
 - `Join Multicast Group`
 - `Multicast Interface Address`
 
@@ -37,6 +38,7 @@ Inspector / Debug Window では次の運用指標を確認できます。
 
 - `Configured Destinations`
 - `Last Requested Destinations`
+- `Effective Send Mode`
 - `Send Success / Failure`
 - `Destination spread (us)`
 - `Destination send order / endpoint / success`
@@ -51,8 +53,10 @@ Editor では multicast 用に次も補助します。
 - 複数 NIC 時の Bind / Multicast Interface 明示 warning
 - Bind / Multicast 設定の妥当性 warning
 - Destination Port / Additional Destinations / Camera ID Filter の妥当性 warning
+- Multicast TTL の妥当性 warning
 
 Free-D の受信側では次を扱います。
 
 - `FreeDInputSourceBehaviour`: UDP unicast / multicast 受信、D1 packet parse、camera id filter
+- `FreeDInputSourceBehaviour`: 同一 UDP port を共有する複数 receiver への packet 多重配布
 - `FreeDDrivenCameraBehaviour`: 受信した pose を Transform に、lens を Unity Camera の `focalLength` / `focusDistance` に反映

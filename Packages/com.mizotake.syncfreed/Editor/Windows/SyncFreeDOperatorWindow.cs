@@ -19,16 +19,26 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         private float focusDistanceStepMeters = 0.5f;
 
         [MenuItem("Tools/SyncFreeD/Operator Window")]
-        public static void OpenWindow()
+        public static SyncFreeDOperatorWindow OpenWindow()
         {
-            GetWindow<SyncFreeDOperatorWindow>("SyncFreeD Operator");
+            return GetWindow<SyncFreeDOperatorWindow>("SyncFreeD Operator");
+        }
+
+        public void SetTarget(SyncFreeDBehaviour behaviour)
+        {
+            targetBehaviour = behaviour;
+            Repaint();
         }
 
         private void OnSelectionChange()
         {
             if (Selection.activeGameObject != null)
             {
-                targetBehaviour = Selection.activeGameObject.GetComponent<SyncFreeDBehaviour>();
+                var resolvedBehaviour = SyncFreeDSupportSummary.FindSyncBehaviour(Selection.activeGameObject);
+                if (resolvedBehaviour != null)
+                {
+                    targetBehaviour = resolvedBehaviour;
+                }
             }
 
             Repaint();
@@ -46,6 +56,11 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         private void DrawSampleGuide()
         {
             EditorGUILayout.LabelField("おすすめ sample", EditorStyles.boldLabel);
+            if (!SyncFreeDSupportSummary.CanOpenSampleScene())
+            {
+                EditorGUILayout.HelpBox(SyncFreeDSupportSummary.GetSampleSceneOpenBlockedReason(), MessageType.Info);
+            }
+
             DrawSampleButton(SyncFreeDSampleId.BasicVirtualCamera, "Basic");
             DrawSampleButton(SyncFreeDSampleId.OutputInspector, "Inspector");
             DrawSampleButton(SyncFreeDSampleId.FreeDController, "Controller");
@@ -62,9 +77,12 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                     EditorGUILayout.LabelField(SyncFreeDSupportSummary.GetSampleDescription(sampleId), bodyStyle);
                 }
 
-                if (GUILayout.Button($"Open {shortLabel}"))
+                using (new EditorGUI.DisabledScope(!SyncFreeDSupportSummary.CanOpenSampleScene()))
                 {
-                    SyncFreeDSupportSummary.TryOpenSampleScene(sampleId);
+                    if (GUILayout.Button($"Open {shortLabel}"))
+                    {
+                        SyncFreeDSupportSummary.TryOpenSampleScene(sampleId);
+                    }
                 }
             }
         }
@@ -75,7 +93,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
             targetBehaviour = (SyncFreeDBehaviour)EditorGUILayout.ObjectField("SyncFreeD Behaviour", targetBehaviour, typeof(SyncFreeDBehaviour), true);
             if (targetBehaviour == null && GUILayout.Button("Scene 内から自動で探す"))
             {
-                targetBehaviour = FindObjectOfType<SyncFreeDBehaviour>();
+                targetBehaviour = SyncFreeDSupportSummary.FindSyncBehaviour(Selection.activeGameObject);
             }
 
             var snapshot = SyncFreeDSupportSummary.Build(targetBehaviour);
@@ -109,9 +127,12 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                     DrawBadge("Recommended Sample", SyncFreeDStatusTone.Ready);
                     EditorGUILayout.LabelField(recommendedSample.ToString(), EditorStyles.boldLabel);
                     EditorGUILayout.LabelField(SyncFreeDSupportSummary.GetRecommendedSampleReason(targetBehaviour), bodyStyle);
-                    if (GUILayout.Button("おすすめ sample を開く"))
+                    using (new EditorGUI.DisabledScope(!SyncFreeDSupportSummary.CanOpenSampleScene()))
                     {
-                        SyncFreeDSupportSummary.TryOpenSampleScene(recommendedSample);
+                        if (GUILayout.Button("おすすめ sample を開く"))
+                        {
+                            SyncFreeDSupportSummary.TryOpenSampleScene(recommendedSample);
+                        }
                     }
                 }
             }
@@ -124,7 +145,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 return;
             }
 
-            var controller = targetBehaviour.GetComponent<FreeDControllerBehaviour>();
+            var controller = SyncFreeDSupportSummary.FindControllerBehaviour(targetBehaviour);
             using (new ColorScope(SyncFreeDSupportSummary.GetBackgroundColor(controller != null ? SyncFreeDStatusTone.Ready : SyncFreeDStatusTone.ActionNeeded)))
             {
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
@@ -299,7 +320,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 Setup.SyncFreeDSetupWizard.OpenWindow();
             }
 
-            var output = targetBehaviour.GetComponent<FreeDUdpOutputBehaviour>();
+            var output = SyncFreeDSupportSummary.FindOutputBehaviour(targetBehaviour);
             if (output != null && GUILayout.Button("sample の送信 preset を適用する"))
             {
                 if (SyncFreeDSupportSummary.ApplySharedOutputPreset(output) && output.OutputProfileAsset != null)
@@ -325,7 +346,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 EditorGUIUtility.PingObject(output.OutputProfileAsset);
             }
 
-            var controller = targetBehaviour.GetComponent<FreeDControllerBehaviour>();
+            var controller = SyncFreeDSupportSummary.FindControllerBehaviour(targetBehaviour);
             if (controller == null && GUILayout.Button("controller を追加して操作可能にする"))
             {
                 controller = SyncFreeDSupportSummary.EnsureController(targetBehaviour);

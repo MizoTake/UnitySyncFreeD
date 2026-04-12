@@ -9,35 +9,13 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
     [CustomEditor(typeof(FreeDUdpOutputBehaviour))]
     public sealed class FreeDUdpOutputBehaviourEditor : UnityEditor.Editor
     {
-        private SerializedProperty packetSendModeProperty;
         private SerializedProperty outputProfileAssetProperty;
         private SerializedProperty applyProfileOnEnableProperty;
-        private SerializedProperty destinationIpAddressProperty;
-        private SerializedProperty destinationPortProperty;
-        private SerializedProperty additionalDestinationsProperty;
-        private SerializedProperty multicastGroupIpAddressProperty;
-        private SerializedProperty multicastPortProperty;
-        private SerializedProperty bindAddressProperty;
-        private SerializedProperty socketBufferSizeProperty;
-        private SerializedProperty cameraIdFilterProperty;
-        private SerializedProperty joinMulticastGroupProperty;
-        private SerializedProperty multicastInterfaceAddressProperty;
 
         private void OnEnable()
         {
-            packetSendModeProperty = serializedObject.FindProperty("packetSendMode");
             outputProfileAssetProperty = serializedObject.FindProperty("outputProfileAsset");
             applyProfileOnEnableProperty = serializedObject.FindProperty("applyProfileOnEnable");
-            destinationIpAddressProperty = serializedObject.FindProperty("destinationIpAddress");
-            destinationPortProperty = serializedObject.FindProperty("destinationPort");
-            additionalDestinationsProperty = serializedObject.FindProperty("additionalDestinations");
-            multicastGroupIpAddressProperty = serializedObject.FindProperty("multicastGroupIpAddress");
-            multicastPortProperty = serializedObject.FindProperty("multicastPort");
-            bindAddressProperty = serializedObject.FindProperty("bindAddress");
-            socketBufferSizeProperty = serializedObject.FindProperty("socketBufferSize");
-            cameraIdFilterProperty = serializedObject.FindProperty("cameraIdFilter");
-            joinMulticastGroupProperty = serializedObject.FindProperty("joinMulticastGroup");
-            multicastInterfaceAddressProperty = serializedObject.FindProperty("multicastInterfaceAddress");
         }
 
         public override void OnInspectorGUI()
@@ -46,44 +24,16 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EditorGUILayout.LabelField("送信 preset", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(outputProfileAssetProperty, new GUIContent("送信設定 Asset"));
             EditorGUILayout.PropertyField(applyProfileOnEnableProperty, new GUIContent("開始時に preset を反映"));
-            EditorGUILayout.HelpBox("同じ送信先を複数の sample で使う場合は、scene ではなく preset Asset に保存します。", MessageType.Info);
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("送信方法", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(packetSendModeProperty, new GUIContent("送信のしかた"));
-            EditorGUILayout.PropertyField(bindAddressProperty, new GUIContent("送信元 IP"));
-            EditorGUILayout.PropertyField(socketBufferSizeProperty, new GUIContent("送信バッファサイズ"));
-            EditorGUILayout.PropertyField(cameraIdFilterProperty, new GUIContent("送る Camera ID"));
-            DrawAvailableInterfaces("利用可能な IPv4 NIC", bindAddressProperty, multicastInterfaceAddressProperty, true, false);
-            if (cameraIdFilterProperty.intValue < 0)
-            {
-                EditorGUILayout.HelpBox("送る Camera ID が -1 の場合は、すべての Camera ID を送信します。", MessageType.None);
-            }
-            var mode = (Networking.PacketSendMode)packetSendModeProperty.enumValueIndex;
-            switch (mode)
-            {
-                case Networking.PacketSendMode.SingleDestinationUnicast:
-                    DrawPrimaryDestination();
-                    break;
-                case Networking.PacketSendMode.MultiDestinationUnicast:
-                    DrawPrimaryDestination();
-                    EditorGUILayout.PropertyField(additionalDestinationsProperty, true);
-                    break;
-                case Networking.PacketSendMode.Multicast:
-                    EditorGUILayout.PropertyField(multicastGroupIpAddressProperty);
-                    EditorGUILayout.PropertyField(multicastPortProperty);
-                    EditorGUILayout.PropertyField(joinMulticastGroupProperty);
-                    EditorGUILayout.PropertyField(multicastInterfaceAddressProperty);
-                    DrawAvailableInterfaces("Multicast 用 NIC", bindAddressProperty, multicastInterfaceAddressProperty, false, true);
-                    DrawMulticastSupportSummary((FreeDUdpOutputBehaviour)target);
-                    break;
-            }
-
+            EditorGUILayout.HelpBox(outputProfileAssetProperty.objectReferenceValue != null ? "送信先や NIC 設定は送信設定 Asset 側で編集します。" : "送信設定 Asset が未設定です。component の現在値で動作しますが、運用では Asset 参照を推奨します。", outputProfileAssetProperty.objectReferenceValue != null ? MessageType.Info : MessageType.Warning);
             serializedObject.ApplyModifiedProperties();
 
-            if (GUILayout.Button("Apply Preset Now"))
+            using (new EditorGUI.DisabledScope(outputProfileAssetProperty.objectReferenceValue == null))
             {
-                ((FreeDUdpOutputBehaviour)target).ApplyProfile();
-                EditorUtility.SetDirty(target);
+                if (GUILayout.Button("Apply Preset Now"))
+                {
+                    ((FreeDUdpOutputBehaviour)target).ApplyProfile();
+                    EditorUtility.SetDirty(target);
+                }
             }
 
             var behaviour = (FreeDUdpOutputBehaviour)target;
@@ -92,71 +42,62 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
                 EditorGUILayout.HelpBox(behaviour.ConfigurationWarning, MessageType.Warning);
             }
 
-            using (new EditorGUI.DisabledScope(true))
+            DrawCurrentSettings(behaviour);
+            if (behaviour.SendMode == Networking.PacketSendMode.Multicast)
             {
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Runtime", EditorStyles.boldLabel);
-                EditorGUILayout.IntField("Packet Length", behaviour.PacketLength);
-                EditorGUILayout.IntField("Configured Destinations", behaviour.GetConfiguredDestinationCount());
-                EditorGUILayout.IntField("Last Requested Destinations", behaviour.LastRequestedDestinationCount);
-                EditorGUILayout.IntField("Last Send Success", behaviour.LastSendSuccessCount);
-                EditorGUILayout.IntField("Total Send Failures", behaviour.TotalSendFailureCount);
-                EditorGUILayout.Toggle("Skipped By Filter", behaviour.LastSendSkippedByFilter);
-                EditorGUILayout.Toggle("Multicast Configured", behaviour.IsMulticastConfigured);
-                EditorGUILayout.TextField("Checksum", behaviour.LastChecksum.ToString("X2"));
-                EditorGUILayout.TextField("User Area", behaviour.LastUserArea.ToString("X4"));
-                EditorGUILayout.TextField("Packet Hex", behaviour.LastPacketHex);
+                DrawMulticastSupportSummary(behaviour);
+            }
+
+            if (EditorApplication.isPlaying)
+            {
+                DrawRuntime(behaviour);
             }
         }
 
-        private static void DrawAvailableInterfaces(string title, SerializedProperty bindAddressProperty, SerializedProperty multicastInterfaceAddressProperty, bool allowBindSelection, bool allowMulticastSelection)
+        private void DrawCurrentSettings(FreeDUdpOutputBehaviour behaviour)
         {
-            var interfaces = Networking.FreeDUdpNetworkInterfaceUtility.GetIPv4Interfaces();
-            if (interfaces.Count == 0)
+            var expanded = BeginSection("current-settings", "現在の適用値", true);
+            if (expanded)
             {
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.EnumPopup("送信のしかた", behaviour.SendMode);
+                    EditorGUILayout.TextField("送信元 IP", FormatOptionalValue(behaviour.BindAddress, "自動"));
+                    EditorGUILayout.IntField("送信バッファサイズ", behaviour.SocketBufferSize);
+                    EditorGUILayout.TextField("送る Camera ID", behaviour.CameraIdFilter >= 0 ? behaviour.CameraIdFilter.ToString() : "すべて");
+                    switch (behaviour.SendMode)
+                    {
+                        case Networking.PacketSendMode.SingleDestinationUnicast:
+                            DrawPrimaryDestination(behaviour);
+                            break;
+                        case Networking.PacketSendMode.MultiDestinationUnicast:
+                            DrawPrimaryDestination(behaviour);
+                            DrawAdditionalDestinations(behaviour);
+                            break;
+                        case Networking.PacketSendMode.Multicast:
+                            EditorGUILayout.TextField("Multicast Group", behaviour.MulticastGroupIpAddress);
+                            EditorGUILayout.IntField("Multicast Port", behaviour.MulticastPort);
+                            EditorGUILayout.IntField("Multicast TTL", behaviour.MulticastTtl);
+                            EditorGUILayout.Toggle("Join Multicast Group", behaviour.JoinMulticastGroup);
+                            EditorGUILayout.TextField("Multicast Interface", FormatOptionalValue(behaviour.MulticastInterfaceAddress, "自動"));
+                            break;
+                    }
+                }
+            }
+
+            EndSection();
+        }
+
+        private void DrawMulticastSupportSummary(FreeDUdpOutputBehaviour behaviour)
+        {
+            var expanded = BeginSection("multicast-support", "Multicast 診断", behaviour.HasConfigurationWarning);
+            if (!expanded)
+            {
+                EndSection();
                 return;
             }
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(title, EditorStyles.miniBoldLabel);
-            for (var i = 0; i < interfaces.Count; i++)
-            {
-                var info = interfaces[i];
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    EditorGUILayout.SelectableLabel(BuildInterfaceLabel(info, bindAddressProperty.stringValue, multicastInterfaceAddressProperty.stringValue), EditorStyles.textField, GUILayout.Height(EditorGUIUtility.singleLineHeight));
-                    if (allowBindSelection && GUILayout.Button("Bind", GUILayout.Width(48f)))
-                    {
-                        bindAddressProperty.stringValue = info.Address;
-                    }
-
-                    if (allowMulticastSelection && GUILayout.Button("MCast", GUILayout.Width(56f)))
-                    {
-                        multicastInterfaceAddressProperty.stringValue = info.Address;
-                    }
-                }
-            }
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUILayout.FlexibleSpace();
-                if (allowBindSelection && !string.IsNullOrWhiteSpace(bindAddressProperty.stringValue) && GUILayout.Button("Bind をクリア", GUILayout.Width(100f)))
-                {
-                    bindAddressProperty.stringValue = string.Empty;
-                }
-
-                if (allowMulticastSelection && !string.IsNullOrWhiteSpace(multicastInterfaceAddressProperty.stringValue) && GUILayout.Button("MCast をクリア", GUILayout.Width(112f)))
-                {
-                    multicastInterfaceAddressProperty.stringValue = string.Empty;
-                }
-            }
-        }
-
-        private static void DrawMulticastSupportSummary(FreeDUdpOutputBehaviour behaviour)
-        {
             var snapshot = Support.FreeDUdpMulticastSupportSummary.Build(behaviour);
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Multicast Support", EditorStyles.miniBoldLabel);
             for (var i = 0; i < snapshot.Lines.Length; i++)
             {
                 EditorGUILayout.LabelField(snapshot.Lines[i], EditorStyles.wordWrappedMiniLabel);
@@ -166,34 +107,84 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             {
                 EditorGUILayout.HelpBox("複数 NIC / join / bind の組み合わせを確認してください。", MessageType.Warning);
             }
+
+            EndSection();
         }
 
-        private static string BuildInterfaceLabel(Networking.FreeDUdpNetworkInterfaceInfo info, string bindAddress, string multicastInterfaceAddress)
+        private void DrawRuntime(FreeDUdpOutputBehaviour behaviour)
         {
-            var isBind = string.Equals(info.Address, bindAddress);
-            var isMulticast = string.Equals(info.Address, multicastInterfaceAddress);
-            if (isBind && isMulticast)
+            var expanded = BeginSection("runtime", "Runtime", true);
+            if (expanded)
             {
-                return $"{info}  [Bind][MCast]";
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.IntField("Packet Length", behaviour.PacketLength);
+                    EditorGUILayout.IntField("Configured Destinations", behaviour.GetConfiguredDestinationCount());
+                    EditorGUILayout.IntField("Last Requested Destinations", behaviour.LastRequestedDestinationCount);
+                    EditorGUILayout.EnumPopup("Effective Send Mode", behaviour.LastEffectiveSendMode);
+                    EditorGUILayout.IntField("直近成功送信数", behaviour.LastSendSuccessCount);
+                    EditorGUILayout.IntField("累計送信失敗数", behaviour.TotalSendFailureCount);
+                    EditorGUILayout.Toggle("Camera ID Filter で skip", behaviour.LastSendSkippedByFilter);
+                    if (behaviour.SendMode == Networking.PacketSendMode.Multicast)
+                    {
+                        EditorGUILayout.Toggle("Multicast Configured", behaviour.IsMulticastConfigured);
+                    }
+
+                    if (string.IsNullOrEmpty(behaviour.LastPacketHex))
+                    {
+                        EditorGUILayout.TextField("直近 packet", "まだ送信していません");
+                    }
+                    else
+                    {
+                        EditorGUILayout.TextField("Checksum", behaviour.LastChecksum.ToString("X2"));
+                        EditorGUILayout.TextField("User Area", behaviour.LastUserArea.ToString("X4"));
+                        EditorGUILayout.TextField("Packet Hex", behaviour.LastPacketHex);
+                    }
+                }
             }
 
-            if (isBind)
-            {
-                return $"{info}  [Bind]";
-            }
-
-            if (isMulticast)
-            {
-                return $"{info}  [MCast]";
-            }
-
-            return info.ToString();
+            EndSection();
         }
 
-        private void DrawPrimaryDestination()
+        private static void DrawPrimaryDestination(FreeDUdpOutputBehaviour behaviour)
         {
-            EditorGUILayout.PropertyField(destinationIpAddressProperty, new GUIContent("送り先 IP"));
-            EditorGUILayout.PropertyField(destinationPortProperty, new GUIContent("送り先 Port"));
+            EditorGUILayout.TextField("送り先 IP", behaviour.DestinationIpAddress);
+            EditorGUILayout.IntField("送り先 Port", behaviour.DestinationPort);
+        }
+
+        private static void DrawAdditionalDestinations(FreeDUdpOutputBehaviour behaviour)
+        {
+            var destinations = behaviour.AdditionalDestinations;
+            if (destinations.Length == 0)
+            {
+                EditorGUILayout.LabelField("追加送信先", "なし");
+                return;
+            }
+
+            for (var i = 0; i < destinations.Length; i++)
+            {
+                var destination = destinations[i];
+                EditorGUILayout.TextField($"追加送信先 {i + 1}", $"{destination.IpAddress}:{destination.Port} {(destination.Enabled ? "Enabled" : "Disabled")}");
+            }
+        }
+
+        private bool BeginSection(string key, string label, bool defaultExpanded)
+        {
+            var stateKey = $"{nameof(FreeDUdpOutputBehaviourEditor)}.{target.GetInstanceID()}.{key}";
+            var expanded = SessionState.GetBool(stateKey, defaultExpanded);
+            expanded = EditorGUILayout.BeginFoldoutHeaderGroup(expanded, label);
+            SessionState.SetBool(stateKey, expanded);
+            return expanded;
+        }
+
+        private static void EndSection()
+        {
+            EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
+        private static string FormatOptionalValue(string value, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(value) ? fallback : value;
         }
     }
 }

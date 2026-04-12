@@ -22,7 +22,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
         {
             if (Selection.activeGameObject != null)
             {
-                targetBehaviour = Selection.activeGameObject.GetComponent<SyncFreeDBehaviour>();
+                targetBehaviour = SyncFreeDSupportSummary.FindSyncBehaviour(Selection.activeGameObject);
             }
 
             Repaint();
@@ -56,7 +56,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
             var state = targetBehaviour.LastState;
             var diagnostics = targetBehaviour.LastDiagnostics;
             var support = SyncFreeDSupportSummary.Build(targetBehaviour);
-            var output = targetBehaviour.GetComponent<FreeDUdpOutputBehaviour>();
+            var output = SyncFreeDSupportSummary.FindOutputBehaviour(targetBehaviour);
             var debugSnapshot = SyncFreeDDebugSnapshotBuilder.Build(state, diagnostics, output);
             var multicastSupport = FreeDUdpMulticastSupportSummary.Build(output);
             DrawSupportBanner(support);
@@ -100,8 +100,8 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                     EditorGUILayout.HelpBox(targetBehaviour.FirmwareBehaviorWarning, MessageType.Warning);
                 }
             });
-            var debugOutput = targetBehaviour.GetComponent<DebugLogOutputBehaviour>();
-            var recordingOutput = targetBehaviour.GetComponent<RecordingOutputBehaviour>();
+            var debugOutput = SyncFreeDSupportSummary.FindDebugLogOutputBehaviour(targetBehaviour);
+            var recordingOutput = SyncFreeDSupportSummary.FindRecordingOutputBehaviour(targetBehaviour);
             EditorGUILayout.Space();
             var packetTone = output != null && !output.HasConfigurationWarning ? SyncFreeDStatusTone.Ready : SyncFreeDStatusTone.Warning;
             DrawSection("Packet", packetTone, () =>
@@ -149,7 +149,7 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 DrawMetricRow("Debug Log", debugOutput != null ? debugOutput.LastMessage : "Not attached");
                 DrawMetricRow("Recording", recordingOutput != null ? recordingOutput.LastCsvLine : "Not attached");
             });
-            var loopbackReceiver = targetBehaviour.GetComponent<FreeDLoopbackReceiverBehaviour>();
+            var loopbackReceiver = SyncFreeDSupportSummary.FindLoopbackReceiverBehaviour(targetBehaviour);
             if (loopbackReceiver != null)
             {
                 EditorGUILayout.Space();

@@ -279,7 +279,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 410bdedebba69184d9a11c88d241307b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sourceBehaviour: {fileID: 0}
+  sourceBehaviour: {fileID: 626907086}
   outputBehaviour: {fileID: 1055331810}
   debugLogOutputBehaviour: {fileID: 0}
   recordingOutputBehaviour: {fileID: 0}
@@ -322,7 +322,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 626907081}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e0928917b10948c4c9255e7e3f2d6333, type: 3}
+  m_Script: {fileID: 11500000, guid: d57859d863c63d44f931279c8ca306c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   sourceId: visca-bridge

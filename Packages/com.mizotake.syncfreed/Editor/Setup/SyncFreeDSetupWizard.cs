@@ -190,9 +190,16 @@ namespace MizoTake.SyncFreeD.Editor.Setup
                 FirmwareBehaviorProfile = CreateAssetIfMissing<ScriptableObjects.FirmwareBehaviorProfileAsset>($"{directoryPath}/DefaultFirmwareBehaviorProfile.asset"),
                 LensProfile = CreateAssetIfMissing<ScriptableObjects.LensProfileAsset>($"{directoryPath}/DefaultLensProfile.asset"),
                 MountProfile = CreateAssetIfMissing<ScriptableObjects.MountProfileAsset>($"{directoryPath}/DefaultMountProfile.asset"),
+                BehaviourProfile = CreateAssetIfMissing<ScriptableObjects.SyncFreeDBehaviourProfileAsset>($"{directoryPath}/DefaultSyncFreeDBehaviourProfile.asset"),
                 OutputProfile = CreateAssetIfMissing<ScriptableObjects.FreeDUdpOutputProfileAsset>($"{directoryPath}/DefaultFreeDUdpOutputProfile.asset"),
                 ControllerProfile = CreateAssetIfMissing<ScriptableObjects.FreeDControllerProfileAsset>($"{directoryPath}/DefaultFreeDControllerProfile.asset")
             };
+            assets.BehaviourProfile.Value.TuningProfileAsset = assets.SyncTuningProfile;
+            assets.BehaviourProfile.Value.DeviceProfileAsset = assets.DeviceProfile;
+            assets.BehaviourProfile.Value.FirmwareBehaviorProfileAsset = assets.FirmwareBehaviorProfile;
+            assets.BehaviourProfile.Value.LensProfileAsset = assets.LensProfile;
+            assets.BehaviourProfile.Value.MountProfileAsset = assets.MountProfile;
+            EditorUtility.SetDirty(assets.BehaviourProfile);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             return assets;
@@ -216,11 +223,8 @@ namespace MizoTake.SyncFreeD.Editor.Setup
             var syncBehaviour = cameraObject.GetComponent<SyncFreeDBehaviour>();
             if (syncBehaviour != null)
             {
-                AssignObjectReference(syncBehaviour, "tuningProfileAsset", assets.SyncTuningProfile);
-                AssignObjectReference(syncBehaviour, "deviceProfileAsset", assets.DeviceProfile);
-                AssignObjectReference(syncBehaviour, "firmwareBehaviorProfileAsset", assets.FirmwareBehaviorProfile);
-                AssignObjectReference(syncBehaviour, "lensProfileAsset", assets.LensProfile);
-                AssignObjectReference(syncBehaviour, "mountProfileAsset", assets.MountProfile);
+                syncBehaviour.SetProfileAsset(assets.BehaviourProfile, true);
+                EditorUtility.SetDirty(syncBehaviour);
             }
 
             var outputBehaviour = cameraObject.GetComponent<FreeDUdpOutputBehaviour>();
@@ -238,14 +242,6 @@ namespace MizoTake.SyncFreeD.Editor.Setup
             }
         }
 
-        private static void AssignObjectReference(Object target, string propertyName, Object value)
-        {
-            var serializedObject = new SerializedObject(target);
-            serializedObject.FindProperty(propertyName).objectReferenceValue = value;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(target);
-        }
-
         private sealed class CreatedAssets
         {
             public ScriptableObjects.SyncTuningProfileAsset SyncTuningProfile;
@@ -253,6 +249,7 @@ namespace MizoTake.SyncFreeD.Editor.Setup
             public ScriptableObjects.FirmwareBehaviorProfileAsset FirmwareBehaviorProfile;
             public ScriptableObjects.LensProfileAsset LensProfile;
             public ScriptableObjects.MountProfileAsset MountProfile;
+            public ScriptableObjects.SyncFreeDBehaviourProfileAsset BehaviourProfile;
             public ScriptableObjects.FreeDUdpOutputProfileAsset OutputProfile;
             public ScriptableObjects.FreeDControllerProfileAsset ControllerProfile;
         }

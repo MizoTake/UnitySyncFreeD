@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Networking;
 using MizoTake.SyncFreeD.ScriptableObjects;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
@@ -223,10 +224,11 @@ namespace MizoTake.SyncFreeD.Editor.Support
                 return snapshot;
             }
 
-            var output = behaviour.GetComponent<FreeDUdpOutputBehaviour>();
-            var controller = behaviour.GetComponent<FreeDControllerBehaviour>();
-            var loopback = behaviour.GetComponent<FreeDLoopbackReceiverBehaviour>();
-            snapshot.HasSource = behaviour.SourceProvider != null;
+            var sourceProvider = FindSourceProvider(behaviour);
+            var output = FindOutputBehaviour(behaviour);
+            var controller = FindControllerBehaviour(behaviour);
+            var loopback = FindLoopbackReceiverBehaviour(behaviour);
+            snapshot.HasSource = sourceProvider != null;
             snapshot.HasOutput = output != null;
             snapshot.HasOutputPreset = output != null && output.OutputProfileAsset != null;
             snapshot.HasControllerPreset = controller == null || controller.ProfileAsset != null;
@@ -285,7 +287,7 @@ namespace MizoTake.SyncFreeD.Editor.Support
                 return SyncFreeDSampleId.BasicVirtualCamera;
             }
 
-            if (behaviour.GetComponent<FreeDControllerBehaviour>() != null)
+            if (FindControllerBehaviour(behaviour) != null)
             {
                 return SyncFreeDSampleId.FreeDController;
             }
@@ -300,7 +302,7 @@ namespace MizoTake.SyncFreeD.Editor.Support
                 return SyncFreeDSampleId.ExternalTracker;
             }
 
-            if (behaviour.GetComponent<FreeDLoopbackReceiverBehaviour>() != null)
+            if (FindLoopbackReceiverBehaviour(behaviour) != null)
             {
                 return SyncFreeDSampleId.OutputInspector;
             }
@@ -327,8 +329,148 @@ namespace MizoTake.SyncFreeD.Editor.Support
             }
         }
 
+        public static SyncFreeDBehaviour FindSyncBehaviour(GameObject context)
+        {
+            var direct = FindNearbyComponent<SyncFreeDBehaviour>(context);
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            var matched = FindMatchingSyncBehaviour(context);
+            if (matched != null)
+            {
+                return matched;
+            }
+
+            var sceneComponent = FindNearestSceneComponent<SyncFreeDBehaviour>(context);
+            return sceneComponent != null ? sceneComponent : UnityEngine.Object.FindFirstObjectByType<SyncFreeDBehaviour>();
+        }
+
+        public static FreeDControllerBehaviour FindControllerBehaviour(GameObject context)
+        {
+            return FindNearbyOrSceneComponent<FreeDControllerBehaviour>(context);
+        }
+
+        public static FreeDControllerBehaviour FindControllerBehaviour(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null)
+            {
+                return null;
+            }
+
+            var direct = behaviour.GetComponent<FreeDControllerBehaviour>();
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            var matched = FindMatchingControllerInScene(behaviour);
+            return matched != null ? matched : FindUniqueSceneComponent<FreeDControllerBehaviour>(behaviour.gameObject);
+        }
+
+        public static FreeDInputSourceBehaviour FindInputSourceBehaviour(GameObject context)
+        {
+            return FindNearbyOrSceneComponent<FreeDInputSourceBehaviour>(context);
+        }
+
+        public static FreeDLoopbackReceiverBehaviour FindLoopbackReceiverBehaviour(GameObject context)
+        {
+            return FindNearbyOrSceneComponent<FreeDLoopbackReceiverBehaviour>(context);
+        }
+
+        public static FreeDLoopbackReceiverBehaviour FindLoopbackReceiverBehaviour(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null)
+            {
+                return null;
+            }
+
+            var direct = behaviour.GetComponent<FreeDLoopbackReceiverBehaviour>();
+            return direct != null ? direct : FindUniqueSceneComponent<FreeDLoopbackReceiverBehaviour>(behaviour.gameObject);
+        }
+
+        public static DebugLogOutputBehaviour FindDebugLogOutputBehaviour(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null)
+            {
+                return null;
+            }
+
+            if (behaviour.DebugLogOutputBehaviour != null)
+            {
+                return behaviour.DebugLogOutputBehaviour;
+            }
+
+            var direct = behaviour.GetComponent<DebugLogOutputBehaviour>();
+            return direct != null ? direct : FindUniqueSceneComponent<DebugLogOutputBehaviour>(behaviour.gameObject);
+        }
+
+        public static RecordingOutputBehaviour FindRecordingOutputBehaviour(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null)
+            {
+                return null;
+            }
+
+            if (behaviour.RecordingOutputBehaviour != null)
+            {
+                return behaviour.RecordingOutputBehaviour;
+            }
+
+            var direct = behaviour.GetComponent<RecordingOutputBehaviour>();
+            return direct != null ? direct : FindUniqueSceneComponent<RecordingOutputBehaviour>(behaviour.gameObject);
+        }
+
+        public static FreeDDrivenCameraBehaviour FindDrivenCameraBehaviour(GameObject context)
+        {
+            return FindNearbyOrSceneComponent<FreeDDrivenCameraBehaviour>(context);
+        }
+
+        public static FreeDUdpOutputBehaviour FindOutputBehaviour(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null)
+            {
+                return null;
+            }
+
+            if (behaviour.OutputBehaviour != null)
+            {
+                return behaviour.OutputBehaviour;
+            }
+
+            var direct = behaviour.GetComponent<FreeDUdpOutputBehaviour>();
+            return direct != null ? direct : FindUniqueSceneComponent<FreeDUdpOutputBehaviour>(behaviour.gameObject);
+        }
+
+        public static bool CanOpenSampleScene()
+        {
+            return CanOpenSampleScene(EditorApplication.isPlayingOrWillChangePlaymode);
+        }
+
+        public static bool CanOpenSampleScene(bool isPlayingOrWillChangePlaymode)
+        {
+            return !isPlayingOrWillChangePlaymode;
+        }
+
+        public static string GetSampleSceneOpenBlockedReason()
+        {
+            return GetSampleSceneOpenBlockedReason(EditorApplication.isPlayingOrWillChangePlaymode);
+        }
+
+        public static string GetSampleSceneOpenBlockedReason(bool isPlayingOrWillChangePlaymode)
+        {
+            return CanOpenSampleScene(isPlayingOrWillChangePlaymode) ? string.Empty : "Play Mode 中は scene を切り替えできません。停止してから sample を開いてください。";
+        }
+
         public static bool TryOpenSampleScene(SyncFreeDSampleId sampleId)
         {
+            if (!CanOpenSampleScene())
+            {
+                Debug.LogWarning(GetSampleSceneOpenBlockedReason());
+                return false;
+            }
+
             var scenePath = GetSampleScenePath(sampleId);
             if (!File.Exists(scenePath))
             {
@@ -397,7 +539,7 @@ namespace MizoTake.SyncFreeD.Editor.Support
                 return null;
             }
 
-            var controller = behaviour.GetComponent<FreeDControllerBehaviour>();
+            var controller = FindControllerBehaviour(behaviour);
             if (controller != null)
             {
                 return controller;
@@ -576,6 +718,355 @@ namespace MizoTake.SyncFreeD.Editor.Support
             }
 
             return $"{outputWarning}\n{firmwareWarning}";
+        }
+
+        private static ICameraFrameProvider FindSourceProvider(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null)
+            {
+                return null;
+            }
+
+            if (behaviour.SourceProvider != null)
+            {
+                return behaviour.SourceProvider;
+            }
+
+            var components = behaviour.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < components.Length; i++)
+            {
+                if (components[i] is ICameraFrameProvider provider)
+                {
+                    return provider;
+                }
+            }
+
+            return null;
+        }
+
+        private static FreeDControllerBehaviour FindMatchingControllerInScene(SyncFreeDBehaviour behaviour)
+        {
+            if (behaviour == null || !behaviour.gameObject.scene.IsValid())
+            {
+                return null;
+            }
+
+            var camera = behaviour.GetComponent<Camera>();
+            var controllers = EnumerateSceneComponents<FreeDControllerBehaviour>(behaviour.gameObject).ToArray();
+            for (var i = 0; i < controllers.Length; i++)
+            {
+                var controller = controllers[i];
+                if (controller == null)
+                {
+                    continue;
+                }
+
+                if (controller.gameObject == behaviour.gameObject || controller.ControlledTransform == behaviour.transform || (camera != null && controller.ControlledCamera == camera))
+                {
+                    return controller;
+                }
+            }
+
+            return null;
+        }
+
+        private static T FindUniqueSceneComponent<T>(GameObject context) where T : Component
+        {
+            if (context == null)
+            {
+                return null;
+            }
+
+            var candidates = EnumerateSceneComponents<T>(context).Distinct().ToArray();
+            return candidates.Length == 1 ? candidates[0] : null;
+        }
+
+        private static T FindNearestSceneComponent<T>(GameObject context) where T : Component
+        {
+            if (context == null || !context.scene.IsValid())
+            {
+                return null;
+            }
+
+            var candidates = EnumerateSceneComponents<T>(context).Distinct().ToArray();
+            if (candidates.Length == 0)
+            {
+                return null;
+            }
+
+            var bestCandidate = default(T);
+            var bestScore = int.MaxValue;
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                var score = ComputeSceneDistanceScore(context.transform, candidate.transform);
+                if (score >= bestScore)
+                {
+                    continue;
+                }
+
+                bestCandidate = candidate;
+                bestScore = score;
+            }
+
+            return bestCandidate;
+        }
+
+        private static IEnumerable<T> EnumerateSceneComponents<T>(GameObject context) where T : Component
+        {
+            if (context == null || !context.scene.IsValid())
+            {
+                yield break;
+            }
+
+            var roots = context.scene.GetRootGameObjects();
+            for (var rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+            {
+                var components = roots[rootIndex].GetComponentsInChildren<T>(true);
+                for (var componentIndex = 0; componentIndex < components.Length; componentIndex++)
+                {
+                    if (components[componentIndex] != null)
+                    {
+                        yield return components[componentIndex];
+                    }
+                }
+            }
+        }
+
+        private static T FindNearbyOrSceneComponent<T>(GameObject context) where T : Component
+        {
+            var direct = FindNearbyComponent<T>(context);
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            if (context != null)
+            {
+                var sceneComponent = FindNearestSceneComponent<T>(context);
+                if (sceneComponent != null)
+                {
+                    return sceneComponent;
+                }
+            }
+
+            return UnityEngine.Object.FindFirstObjectByType<T>();
+        }
+
+        private static T FindNearbyComponent<T>(GameObject context) where T : Component
+        {
+            if (context == null)
+            {
+                return null;
+            }
+
+            var direct = context.GetComponent<T>();
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            var parent = context.GetComponentInParent<T>();
+            if (parent != null)
+            {
+                return parent;
+            }
+
+            var children = context.GetComponentsInChildren<T>(true);
+            for (var i = 0; i < children.Length; i++)
+            {
+                if (children[i] != null)
+                {
+                    return children[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static int ComputeSceneDistanceScore(Transform context, Transform candidate)
+        {
+            if (context == null || candidate == null)
+            {
+                return int.MaxValue;
+            }
+
+            var rootDistance = Mathf.Abs(context.root.GetSiblingIndex() - candidate.root.GetSiblingIndex());
+            return (rootDistance * 1000) + ComputeHierarchyDistance(context, candidate);
+        }
+
+        private static int ComputeHierarchyDistance(Transform from, Transform to)
+        {
+            if (from == null || to == null)
+            {
+                return int.MaxValue;
+            }
+
+            if (from == to)
+            {
+                return 0;
+            }
+
+            var ancestorDepths = new Dictionary<Transform, int>();
+            var current = from;
+            var depth = 0;
+            while (current != null)
+            {
+                ancestorDepths[current] = depth;
+                current = current.parent;
+                depth++;
+            }
+
+            current = to;
+            depth = 0;
+            while (current != null)
+            {
+                if (ancestorDepths.TryGetValue(current, out var fromDepth))
+                {
+                    return fromDepth + depth;
+                }
+
+                current = current.parent;
+                depth++;
+            }
+
+            return int.MaxValue / 2;
+        }
+
+        private static SyncFreeDBehaviour FindMatchingSyncBehaviour(GameObject context)
+        {
+            if (context == null || !context.scene.IsValid())
+            {
+                return null;
+            }
+
+            var output = FindNearbyComponent<FreeDUdpOutputBehaviour>(context);
+            if (output != null)
+            {
+                var matchedByOutput = FindNearestSyncMatch(context, sync => FindOutputBehaviour(sync) == output);
+                if (matchedByOutput != null)
+                {
+                    return matchedByOutput;
+                }
+            }
+
+            var controller = FindNearbyComponent<FreeDControllerBehaviour>(context);
+            if (controller != null)
+            {
+                var matchedByController = FindNearestSyncMatch(context, sync => sync != null && (sync.gameObject == controller.gameObject || sync.transform == controller.ControlledTransform || (controller.ControlledCamera != null && sync.GetComponent<Camera>() == controller.ControlledCamera)));
+                if (matchedByController != null)
+                {
+                    return matchedByController;
+                }
+            }
+
+            var sourceProvider = FindNearbyCameraFrameProvider(context);
+            if (sourceProvider != null)
+            {
+                var matchedBySource = FindNearestSyncMatch(context, sync => sync != null && sync.SourceProvider == sourceProvider);
+                if (matchedBySource != null)
+                {
+                    return matchedBySource;
+                }
+            }
+
+            var debugOutput = FindNearbyComponent<DebugLogOutputBehaviour>(context);
+            if (debugOutput != null)
+            {
+                var matchedByDebugOutput = FindNearestSyncMatch(context, sync => FindDebugLogOutputBehaviour(sync) == debugOutput);
+                if (matchedByDebugOutput != null)
+                {
+                    return matchedByDebugOutput;
+                }
+            }
+
+            var recordingOutput = FindNearbyComponent<RecordingOutputBehaviour>(context);
+            if (recordingOutput != null)
+            {
+                var matchedByRecordingOutput = FindNearestSyncMatch(context, sync => FindRecordingOutputBehaviour(sync) == recordingOutput);
+                if (matchedByRecordingOutput != null)
+                {
+                    return matchedByRecordingOutput;
+                }
+            }
+
+            return null;
+        }
+
+        private static SyncFreeDBehaviour FindNearestSyncMatch(GameObject context, Func<SyncFreeDBehaviour, bool> predicate)
+        {
+            if (context == null || predicate == null)
+            {
+                return null;
+            }
+
+            SyncFreeDBehaviour bestCandidate = null;
+            var bestScore = int.MaxValue;
+            var candidates = EnumerateSceneComponents<SyncFreeDBehaviour>(context).Distinct().ToArray();
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[i];
+                if (candidate == null || !predicate(candidate))
+                {
+                    continue;
+                }
+
+                var score = ComputeSceneDistanceScore(context.transform, candidate.transform);
+                if (score >= bestScore)
+                {
+                    continue;
+                }
+
+                bestCandidate = candidate;
+                bestScore = score;
+            }
+
+            return bestCandidate;
+        }
+
+        private static ICameraFrameProvider FindNearbyCameraFrameProvider(GameObject context)
+        {
+            if (context == null)
+            {
+                return null;
+            }
+
+            var direct = FindCameraFrameProvider(context.GetComponents<MonoBehaviour>());
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            var parents = FindCameraFrameProvider(context.GetComponentsInParent<MonoBehaviour>(true));
+            if (parents != null)
+            {
+                return parents;
+            }
+
+            return FindCameraFrameProvider(context.GetComponentsInChildren<MonoBehaviour>(true));
+        }
+
+        private static ICameraFrameProvider FindCameraFrameProvider(MonoBehaviour[] behaviours)
+        {
+            if (behaviours == null)
+            {
+                return null;
+            }
+
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is ICameraFrameProvider provider)
+                {
+                    return provider;
+                }
+            }
+
+            return null;
         }
     }
 }
