@@ -74,8 +74,19 @@ namespace MizoTake.SyncFreeD.Networking
 
         public void ConfigureMulticast(string multicastGroupIpAddress, string interfaceAddress, bool joinMulticastGroup, int multicastTtl)
         {
-            ConfiguredMulticastTtl = Math.Clamp(multicastTtl, 1, 255);
-            udpClient.Ttl = (short)ConfiguredMulticastTtl;
+            var clampedTtl = Math.Clamp(multicastTtl, 1, 255);
+            var normalizedInterfaceAddress = interfaceAddress ?? string.Empty;
+            if (IsMulticastConfigured && configuredMulticastGroup == multicastGroupIpAddress && configuredMulticastInterface == normalizedInterfaceAddress && ConfiguredMulticastTtl == clampedTtl)
+            {
+                return;
+            }
+
+            if (ConfiguredMulticastTtl != clampedTtl)
+            {
+                ConfiguredMulticastTtl = clampedTtl;
+                udpClient.Ttl = (short)ConfiguredMulticastTtl;
+            }
+
             if (!joinMulticastGroup || string.IsNullOrWhiteSpace(multicastGroupIpAddress))
             {
                 IsMulticastConfigured = false;
@@ -84,7 +95,7 @@ namespace MizoTake.SyncFreeD.Networking
                 return;
             }
 
-            if (IsMulticastConfigured && configuredMulticastGroup == multicastGroupIpAddress && configuredMulticastInterface == (interfaceAddress ?? string.Empty))
+            if (IsMulticastConfigured && configuredMulticastGroup == multicastGroupIpAddress && configuredMulticastInterface == normalizedInterfaceAddress)
             {
                 return;
             }
@@ -101,7 +112,7 @@ namespace MizoTake.SyncFreeD.Networking
 
             IsMulticastConfigured = true;
             configuredMulticastGroup = multicastGroupIpAddress;
-            configuredMulticastInterface = interfaceAddress ?? string.Empty;
+            configuredMulticastInterface = normalizedInterfaceAddress;
         }
 
         public void Dispose()

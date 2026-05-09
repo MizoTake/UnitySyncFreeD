@@ -167,6 +167,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             LastRequestedDestinationCount = GetRequestedDestinationCount(effectiveSendMode, additionalDestinationLimit);
             lastDestinationDiagnostics.Clear();
             LastSendSpreadMicroseconds = 0L;
+            if (effectiveSendMode == PacketSendMode.SingleDestinationUnicast)
+            {
+                SendPrimaryDestinationFast();
+                return;
+            }
+
             var sendStartTimestamp = Stopwatch.GetTimestamp();
             if (!TryEnsureSocket(sendStartTimestamp))
             {
@@ -215,7 +221,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             catch (Exception exception)
             {
                 TotalSendFailureCount++;
-                RecordDestinationDiagnostic(string.Empty, 0, 0, sendStartTimestamp, false);
+                RecordTimedDestinationDiagnostic(string.Empty, 0, 0, sendStartTimestamp, false);
+                UnityEngine.Debug.LogWarning($"SyncFreeD UDP transport setup failed: {exception.Message}", this);
+                return false;
+            }
+        }
+
+        private bool TryEnsureSocketFast()
+        {
+            try
+            {
+                EnsureSocket();
+                return true;
+            }
+            catch (Exception exception)
+            {
+                TotalSendFailureCount++;
+                RecordDestinationDiagnostic(string.Empty, 0, 0, 0L, false);
                 UnityEngine.Debug.LogWarning($"SyncFreeD UDP transport setup failed: {exception.Message}", this);
                 return false;
             }
@@ -231,8 +253,25 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             catch (Exception exception)
             {
                 TotalSendFailureCount++;
-                RecordDestinationDiagnostic(multicastGroupIpAddress, multicastPort, 0, sendStartTimestamp, false);
+                RecordTimedDestinationDiagnostic(multicastGroupIpAddress, multicastPort, 0, sendStartTimestamp, false);
                 UnityEngine.Debug.LogWarning($"SyncFreeD UDP multicast setup failed: {exception.Message}", this);
+                return false;
+            }
+        }
+
+        private bool TrySendFast(string ipAddress, int port, int order)
+        {
+            try
+            {
+                transport.Send(packetBuffer, GetCachedEndpoint(ipAddress, port));
+                RecordDestinationDiagnostic(ipAddress, port, order, 0L, true);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                TotalSendFailureCount++;
+                RecordDestinationDiagnostic(ipAddress, port, order, 0L, false);
+                UnityEngine.Debug.LogWarning($"SyncFreeD UDP send failed: {exception.Message}", this);
                 return false;
             }
         }
@@ -242,15 +281,28 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             try
             {
                 transport.Send(packetBuffer, GetCachedEndpoint(ipAddress, port));
-                RecordDestinationDiagnostic(ipAddress, port, order, sendStartTimestamp, true);
+                RecordTimedDestinationDiagnostic(ipAddress, port, order, sendStartTimestamp, true);
                 return true;
             }
             catch (Exception exception)
             {
                 TotalSendFailureCount++;
-                RecordDestinationDiagnostic(ipAddress, port, order, sendStartTimestamp, false);
+                RecordTimedDestinationDiagnostic(ipAddress, port, order, sendStartTimestamp, false);
                 UnityEngine.Debug.LogWarning($"SyncFreeD UDP send failed: {exception.Message}", this);
                 return false;
+            }
+        }
+
+        private void SendPrimaryDestinationFast()
+        {
+            if (!TryEnsureSocketFast())
+            {
+                return;
+            }
+
+            if (TrySendFast(destinationIpAddress, destinationPort, 0))
+            {
+                LastSendSuccessCount++;
             }
         }
 
@@ -332,9 +384,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             transport = null;
         }
 
-        private void RecordDestinationDiagnostic(string ipAddress, int port, int order, long sendStartTimestamp, bool success)
+        private void RecordTimedDestinationDiagnostic(string ipAddress, int port, int order, long sendStartTimestamp, bool success)
         {
             var elapsedMicroseconds = (long)(((Stopwatch.GetTimestamp() - sendStartTimestamp) * 1000000d) / Stopwatch.Frequency);
+            RecordDestinationDiagnostic(ipAddress, port, order, elapsedMicroseconds, success);
+        }
+
+        private void RecordDestinationDiagnostic(string ipAddress, int port, int order, long elapsedMicroseconds, bool success)
+        {
             lastDestinationDiagnostics.Add(new FreeDUdpDestinationDiagnostic(ipAddress, port, order, elapsedMicroseconds, success));
         }
 

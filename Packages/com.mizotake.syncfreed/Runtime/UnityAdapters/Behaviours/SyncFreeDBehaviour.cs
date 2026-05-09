@@ -32,6 +32,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private readonly ITimestampProvider timestampProvider = new SystemTimestampProvider();
         private readonly SyncTickProcessor tickProcessor = new SyncTickProcessor();
         private float nextFixedIntervalTime;
+        private bool referencesResolved;
 
         public CameraSyncState LastState { get; private set; }
         public CameraSyncState LastOutputState { get; private set; }
@@ -192,7 +193,11 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         private bool Tick()
         {
-            ResolveReferences();
+            if (!referencesResolved || sourceBehaviour == null || outputBehaviour == null)
+            {
+                ResolveReferences();
+            }
+
             var sourceProvider = SourceProvider;
             if (sourceProvider == null || outputBehaviour == null)
             {
@@ -271,6 +276,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             {
                 recordingOutputBehaviour = GetComponent<RecordingOutputBehaviour>();
             }
+
+            referencesResolved = true;
         }
 
         private void ResetFixedIntervalClock()

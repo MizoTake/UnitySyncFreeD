@@ -9,6 +9,8 @@ namespace MizoTake.SyncFreeD.Core.Outputs
         private readonly MizoTake.SyncFreeD.Core.Abstractions.IFreeDPacketBuilder packetBuilder;
         private readonly Action<byte[]> transport;
         private readonly byte[] buffer = new byte[FreeDPacketBuilder.PacketLength];
+        private byte[] lastPacket = Array.Empty<byte>();
+        private bool lastPacketDirty;
 
         public FreeDOutput(Action<byte[]> transport)
             : this(new FreeDPacketBuilder(), transport)
@@ -21,13 +23,31 @@ namespace MizoTake.SyncFreeD.Core.Outputs
             this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
         }
 
-        public byte[] LastPacket { get; private set; } = Array.Empty<byte>();
+        public byte[] LastPacket
+        {
+            get
+            {
+                if (!lastPacketDirty)
+                {
+                    return lastPacket;
+                }
+
+                if (lastPacket.Length != buffer.Length)
+                {
+                    lastPacket = new byte[buffer.Length];
+                }
+
+                Array.Copy(buffer, lastPacket, buffer.Length);
+                lastPacketDirty = false;
+                return lastPacket;
+            }
+        }
 
         public void Send(in CameraSyncState state)
         {
             packetBuilder.Build(state, buffer);
-            LastPacket = (byte[])buffer.Clone();
-            transport(LastPacket);
+            lastPacketDirty = true;
+            transport(buffer);
         }
     }
 }

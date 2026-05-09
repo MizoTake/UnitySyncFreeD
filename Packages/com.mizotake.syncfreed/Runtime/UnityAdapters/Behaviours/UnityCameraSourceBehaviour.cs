@@ -16,6 +16,9 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private bool trackingValid = true;
         [SerializeField] private bool lensValid = true;
 
+        private Camera cachedCamera;
+        private Transform cachedTransform;
+
         public string SourceId => sourceId;
 
         public int CameraId => cameraId;
@@ -29,8 +32,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public bool TryGetObservedFrame(out CameraObservedFrame frame)
         {
-            var transformToUse = targetTransform != null ? targetTransform : transform;
-            var cameraToUse = targetCamera != null ? targetCamera : GetComponent<Camera>();
+            var transformToUse = ResolveTransform();
+            var cameraToUse = ResolveCamera();
             if (transformToUse == null)
             {
                 frame = default;
@@ -52,8 +55,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public CameraCommandFrame CaptureCommandFrame()
         {
-            var transformToUse = targetTransform != null ? targetTransform : transform;
-            var cameraToUse = targetCamera != null ? targetCamera : GetComponent<Camera>();
+            var transformToUse = ResolveTransform();
+            var cameraToUse = ResolveCamera();
             return new CameraCommandFrame
             {
                 SourceId = sourceId,
@@ -89,9 +92,47 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public bool TryGetLensState(out LensState lens)
         {
-            var cameraToUse = targetCamera != null ? targetCamera : GetComponent<Camera>();
+            var cameraToUse = ResolveCamera();
             lens = CaptureLens(cameraToUse);
             return lensValid;
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            cachedCamera = null;
+            cachedTransform = null;
+        }
+#endif
+
+        private Transform ResolveTransform()
+        {
+            if (targetTransform != null)
+            {
+                return targetTransform;
+            }
+
+            if (cachedTransform == null)
+            {
+                cachedTransform = transform;
+            }
+
+            return cachedTransform;
+        }
+
+        private Camera ResolveCamera()
+        {
+            if (targetCamera != null)
+            {
+                return targetCamera;
+            }
+
+            if (cachedCamera == null)
+            {
+                cachedCamera = GetComponent<Camera>();
+            }
+
+            return cachedCamera;
         }
 
         private LensState CaptureLens(Camera cameraToUse)
