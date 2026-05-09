@@ -39,7 +39,7 @@
 - `OutputPoseKind.Blended` と `OutputDelayMs` の runtime 反映あり。
 - lens は `CommandLens / PredictedLens / ObservedLens / CorrectedLens` に分離済み。
 - `ZoomCorrectionGain` と `SnapThresholdZoom` は `CorrectedLens` に反映済み。
-- `FreeDReadiness.md` に Free-D 観点の完成度チェックリスト、差分、優先順位あり。
+- `Documentation~/Overview.md` に Free-D 観点の概要、構成、到達点あり。
 - `Testing.md` の件数は更新して維持する。
 
 ## Free-D に関する主要ファイル
@@ -49,8 +49,7 @@
 - `Packages/com.mizotake.syncfreed/Runtime/Core/Outputs/FreeDOutput.cs`
 - `Packages/com.mizotake.syncfreed/Runtime/UnityAdapters/Behaviours/FreeDUdpOutputBehaviour.cs`
 - `Packages/com.mizotake.syncfreed/Runtime/UnityAdapters/Behaviours/SyncFreeDBehaviour.cs`
-- `Packages/com.mizotake.syncfreed/Documentation~/FreeDReadiness.md`
-- `Packages/com.mizotake.syncfreed/Documentation~/FreeDOutput.md`
+- `Packages/com.mizotake.syncfreed/Documentation~/Overview.md`
 - `Packages/com.mizotake.syncfreed/Documentation~/Testing.md`
 
 ## unicli の使い方
@@ -89,7 +88,7 @@
 
 ### 開発フロー
 
-1. `SyncFreeD_spec.md` と `Documentation~/FreeDReadiness.md` で対象差分を決める。
+1. `SyncFreeD_spec.md` と `Documentation~/Overview.md` で対象差分を決める。
 2. 対象ファイルを読む。
 3. `apply_patch` で最小修正する。
 4. 新規ファイルやテスト追加時は `unicli exec AssetDatabase.Import ...` を流す。
@@ -117,7 +116,7 @@
 
 - `VISCA` は Free-D 実装を補助する adapter 契約までで十分。主軸に戻さない。
 - Free-D 側で変更したら packet builder、UDP output、diagnostics、samples、tests の整合を見る。
-- `Testing.md`、`FreeDOutput.md`、`FreeDReadiness.md` の 3 つは実装実態と同期させる。
+- `Documentation~/Overview.md` と `Documentation~/Testing.md` は実装実態と同期させる。
 - `unicli` の不安定さを前提に、失敗時はすぐに設計判断をせず、再試行してログを確認する。
 - 最終報告では、実際に確認できた `Compile` / `EditMode` / `PlayMode` の結果だけを述べる。
 - PowerShell ではなく cmd.exe を使うこと

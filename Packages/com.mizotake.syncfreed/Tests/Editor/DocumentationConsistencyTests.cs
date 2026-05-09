@@ -41,10 +41,11 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         [Test]
         public void SamplesDocumentation_DescribesSharedVisualRig()
         {
-            var content = ReadProjectFile("Packages/com.mizotake.syncfreed/Documentation~/Samples.md");
-            Assert.That(content, Does.Contain("## Sample Visual Rig"));
-            Assert.That(content, Does.Contain("Yellow: `Center Tower` / `Depth Pole`"));
-            Assert.That(content, Does.Contain("White: `Center Line` / `Cross Line`"));
+            var content = ReadProjectFile("Packages/com.mizotake.syncfreed/Documentation~/Overview.md");
+            Assert.That(content, Does.Contain("## Samples"));
+            Assert.That(content, Does.Contain("Sample Visual Rig"));
+            Assert.That(content, Does.Contain("Center Tower"));
+            Assert.That(content, Does.Contain("Cross Line"));
         }
 
         private static string ReadProjectFile(string relativePath)

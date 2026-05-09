@@ -106,7 +106,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             packetBuilder.Build(state, packetBuffer);
             MarkPacketBufferChanged();
-            return packetBuffer;
+            return ClonePacketBuffer();
         }
 
         public void SetOutputProfileAsset(FreeDUdpOutputProfileAsset profileAsset, bool applyImmediately)
@@ -159,16 +159,21 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 return;
             }
 
-            LastSendSkippedByFilter = false;
-            EnsureSocket();
             packetBuilder.Build(state, packetBuffer);
             MarkPacketBufferChanged();
+            LastSendSkippedByFilter = false;
             LastSendSuccessCount = 0;
             LastEffectiveSendMode = effectiveSendMode;
             LastRequestedDestinationCount = GetRequestedDestinationCount(effectiveSendMode, additionalDestinationLimit);
             lastDestinationDiagnostics.Clear();
             LastSendSpreadMicroseconds = 0L;
             var sendStartTimestamp = Stopwatch.GetTimestamp();
+            if (!TryEnsureSocket(sendStartTimestamp))
+            {
+                UpdateSendSpread();
+                return;
+            }
+
             switch (effectiveSendMode)
             {
                 case PacketSendMode.SingleDestinationUnicast:
@@ -179,8 +184,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                     SendAdditionalDestinations(sendStartTimestamp, additionalDestinationLimit);
                     break;
                 case PacketSendMode.Multicast:
-                    transport.ConfigureMulticast(multicastGroupIpAddress, multicastInterfaceAddress, joinMulticastGroup, multicastTtl);
-                    if (TrySend(multicastGroupIpAddress, multicastPort, sendStartTimestamp, 0))
+                    if (TryConfigureMulticast(sendStartTimestamp) && TrySend(multicastGroupIpAddress, multicastPort, sendStartTimestamp, 0))
                     {
                         LastSendSuccessCount++;
                     }
@@ -199,6 +203,38 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private void EnsureSocket()
         {
             transport ??= new FreeDUdpTransport(bindAddress, socketBufferSize);
+        }
+
+        private bool TryEnsureSocket(long sendStartTimestamp)
+        {
+            try
+            {
+                EnsureSocket();
+                return true;
+            }
+            catch (Exception exception)
+            {
+                TotalSendFailureCount++;
+                RecordDestinationDiagnostic(string.Empty, 0, 0, sendStartTimestamp, false);
+                UnityEngine.Debug.LogWarning($"SyncFreeD UDP transport setup failed: {exception.Message}", this);
+                return false;
+            }
+        }
+
+        private bool TryConfigureMulticast(long sendStartTimestamp)
+        {
+            try
+            {
+                transport.ConfigureMulticast(multicastGroupIpAddress, multicastInterfaceAddress, joinMulticastGroup, multicastTtl);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                TotalSendFailureCount++;
+                RecordDestinationDiagnostic(multicastGroupIpAddress, multicastPort, 0, sendStartTimestamp, false);
+                UnityEngine.Debug.LogWarning($"SyncFreeD UDP multicast setup failed: {exception.Message}", this);
+                return false;
+            }
         }
 
         private bool TrySend(string ipAddress, int port, long sendStartTimestamp, int order)
@@ -343,6 +379,13 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
             var clone = new FreeDUdpDestination[source.Length];
             Array.Copy(source, clone, source.Length);
+            return clone;
+        }
+
+        private byte[] ClonePacketBuffer()
+        {
+            var clone = new byte[packetBuffer.Length];
+            Array.Copy(packetBuffer, clone, packetBuffer.Length);
             return clone;
         }
 

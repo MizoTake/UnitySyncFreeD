@@ -12,15 +12,12 @@
 
 シーン構成:
 
-- `Replay Camera`: replay source と sync 本体
-- `Sample Output`: UDP output
-- `Sample Debug HUD`: packet preview と diagnostics
+- `Replay Camera`: replay source、sync、UDP output、packet preview、diagnostics
 - `Sample Visual Rig`: 再生差分を見る marker 群
-- `SyncFreeDBehaviour` は挙動 preset を参照
 
 1. sample を import します。
 2. `Scenes/ReplaySample.unity` を開きます。
-3. `Replay Camera` が挙動 preset、`Sample Output` が送信 preset を参照していることを確認します。
+3. `Replay Camera` に replay source、sync、UDP output、packet preview、diagnostics が付いていることを確認します。
 4. `ReplayCameraSourceBehaviour` の `replayDataAsset` に `ReplayTrack.json` が設定されていることを確認します。
 5. Play Mode に入ります。
 6. `Sample Visual Rig` を見ながら `Prev` / `Next` でフレーム送りし、黄色の `Center Tower`、紫の `Far Target`、奥の `Depth Pole` の見え方が段階的に切り替わることを確認します。

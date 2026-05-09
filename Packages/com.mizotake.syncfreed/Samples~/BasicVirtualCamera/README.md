@@ -11,15 +11,12 @@
 
 シーン構成:
 
-- `Main Camera`: source と sync 本体だけを持つ camera
-- `Sample Output`: UDP output
-- `Sample Debug HUD`: packet preview 表示
+- `Main Camera`: source、sync、UDP output、packet preview を持つ camera
 - `Sample Visual Rig`: 遠近と構図変化を確認する marker 群
-- `SyncFreeDBehaviour` は挙動 preset を参照
 
 1. Package Manager から sample を import します。
 2. `Scenes/BasicVirtualCamera.unity` を開きます。
-3. `Main Camera` が挙動 preset、`Sample Output` が送信 preset を参照していることを確認します。
+3. `Main Camera` に `UnityCameraSourceBehaviour`、`SyncFreeDBehaviour`、`FreeDUdpOutputBehaviour`、`SyncFreeDPacketPreviewBehaviour` が付いていることを確認します。
 4. Play Mode に入ります。
 5. `Sample Visual Rig` の黄色の `Center Tower`、緑の `Near Target`、紫の `Far Target` が見えることを確認します。
 6. Camera を動かしたときに、これらの marker の見え方と遠近感が変わることを確認します。

@@ -1,5 +1,6 @@
 using System.Collections;
 using MizoTake.SyncFreeD.Networking;
+using MizoTake.SyncFreeD.ScriptableObjects;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEngine;
@@ -17,13 +18,13 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             cameraObject.AddComponent<AudioListener>();
             cameraObject.AddComponent<UnityCameraSourceBehaviour>();
             var output = cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
-            cameraObject.AddComponent<SyncFreeDBehaviour>();
-            SetPrivateField(output, "packetSendMode", PacketSendMode.MultiDestinationUnicast);
-            SetPrivateField(output, "additionalDestinations", new[]
+            var profile = CreateMultiDestinationProfile(new[]
             {
                 new FreeDUdpDestination { IpAddress = "127.0.0.1", Port = 40001, Enabled = true },
                 new FreeDUdpDestination { IpAddress = "127.0.0.1", Port = 40002, Enabled = false }
             });
+            output.SetOutputProfileAsset(profile, true);
+            cameraObject.AddComponent<SyncFreeDBehaviour>();
 
             yield return null;
             yield return null;
@@ -31,6 +32,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(output.LastRequestedDestinationCount, Is.EqualTo(2));
             Assert.That(output.LastSendSuccessCount, Is.EqualTo(2));
 
+            Object.Destroy(profile);
             Object.Destroy(cameraObject);
         }
 
@@ -42,13 +44,13 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             cameraObject.AddComponent<AudioListener>();
             cameraObject.AddComponent<UnityCameraSourceBehaviour>();
             var output = cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
-            cameraObject.AddComponent<SyncFreeDBehaviour>();
-            SetPrivateField(output, "packetSendMode", PacketSendMode.MultiDestinationUnicast);
-            SetPrivateField(output, "additionalDestinations", new[]
+            var profile = CreateMultiDestinationProfile(new[]
             {
                 new FreeDUdpDestination { IpAddress = "127.0.0.1", Port = 40001, Enabled = true },
                 new FreeDUdpDestination { IpAddress = "127.0.0.1", Port = 40002, Enabled = true }
             });
+            output.SetOutputProfileAsset(profile, true);
+            cameraObject.AddComponent<SyncFreeDBehaviour>();
 
             yield return null;
             yield return null;
@@ -61,13 +63,16 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(diagnostics[2].Order, Is.EqualTo(2));
             Assert.That(output.LastDestinationSpreadMicroseconds, Is.GreaterThanOrEqualTo(0L));
 
+            Object.Destroy(profile);
             Object.Destroy(cameraObject);
         }
 
-        private static void SetPrivateField(Object target, string fieldName, object value)
+        private static FreeDUdpOutputProfileAsset CreateMultiDestinationProfile(FreeDUdpDestination[] destinations)
         {
-            var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            field.SetValue(target, value);
+            var profile = ScriptableObject.CreateInstance<FreeDUdpOutputProfileAsset>();
+            profile.Value.PacketSendMode = PacketSendMode.MultiDestinationUnicast;
+            profile.Value.AdditionalDestinations = destinations;
+            return profile;
         }
     }
 }

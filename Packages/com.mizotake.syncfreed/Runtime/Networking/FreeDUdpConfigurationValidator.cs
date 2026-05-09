@@ -24,6 +24,7 @@ namespace MizoTake.SyncFreeD.Networking
 
         public static string Validate(PacketSendMode sendMode, string bindAddress, string destinationIpAddress, int destinationPort, FreeDUdpDestination[] additionalDestinations, string multicastGroupIpAddress, int multicastPort, string multicastInterfaceAddress, int multicastTtl, int socketBufferSize, int cameraIdFilter, System.Collections.Generic.IReadOnlyList<FreeDUdpNetworkInterfaceInfo> interfaces)
         {
+            interfaces ??= Array.Empty<FreeDUdpNetworkInterfaceInfo>();
             if (!string.IsNullOrWhiteSpace(bindAddress) && !IPAddress.TryParse(bindAddress, out _))
             {
                 return "Bind Address が不正です。";

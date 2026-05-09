@@ -11,8 +11,7 @@
 
 シーン構成:
 
-- `FreeD Driven Camera`: CG camera と apply behaviour
-- `Sample Input`: Free-D input source
+- `FreeD Driven Camera`: CG camera、Free-D input source、apply behaviour
 - `Sample Visual Rig`: 受信結果の見え方を確認する marker 群
 
 複数カメラ運用:
@@ -22,9 +21,9 @@
 
 1. sample を import します。
 2. `Scenes/FreeDReceiveSample.unity` を開きます。
-3. `Sample Input` が受信 preset を参照していることを確認します。
+3. `FreeD Driven Camera` に `FreeDInputSourceBehaviour` と `FreeDDrivenCameraBehaviour` が付いていることを確認します。
 4. Play Mode に入ります。
 5. Game view は `FreeD Driven Camera` の映像です。Editor の `Tools/SyncFreeD/Debug Controller` を開くと scene 上の `FreeDInputSourceBehaviour` を自動検出して送信先がそろいます。
 6. pan / tilt / zoom のボタンで Free-D を送ると、`Sample Visual Rig` の `Near Target`、`Center Tower`、`Depth Pole` の見え方が変わることを確認します。
 7. `com.unity.postprocessing` が project に入っている場合、`BuiltinPostProcessDepthOfFieldTargetBehaviour` が `PostProcessLayer` / `PostProcessVolume` / `DepthOfField` を自動で組みます。`Focus +` / `Focus -` の操作に応じて被写界深度も変わります。
-8. multicast group / port を変える場合は受信 preset 側を編集します。
+8. multicast group / port を変える場合は `FreeDInputSourceBehaviour` の受信設定を編集します。

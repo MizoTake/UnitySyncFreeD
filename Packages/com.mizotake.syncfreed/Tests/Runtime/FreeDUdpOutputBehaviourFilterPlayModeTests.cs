@@ -1,4 +1,5 @@
 using System.Collections;
+using MizoTake.SyncFreeD.ScriptableObjects;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEngine;
@@ -17,8 +18,10 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             cameraObject.AddComponent<AudioListener>();
             cameraObject.AddComponent<UnityCameraSourceBehaviour>();
             var output = cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
+            var profile = ScriptableObject.CreateInstance<FreeDUdpOutputProfileAsset>();
+            profile.Value.CameraIdFilter = 1;
+            output.SetOutputProfileAsset(profile, true);
             cameraObject.AddComponent<SyncFreeDBehaviour>();
-            SetPrivateField(output, "cameraIdFilter", 1);
 
             yield return null;
             yield return null;
@@ -26,14 +29,9 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(output.LastSendSkippedByFilter, Is.True);
             Assert.That(output.LastSendSuccessCount, Is.EqualTo(0));
 
+            Object.Destroy(profile);
             Object.Destroy(cameraObject);
             LogAssert.ignoreFailingMessages = false;
-        }
-
-        private static void SetPrivateField(Object target, string fieldName, object value)
-        {
-            var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            field.SetValue(target, value);
         }
     }
 }

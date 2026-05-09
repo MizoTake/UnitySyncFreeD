@@ -12,12 +12,8 @@
 
 シーン構成:
 
-- `FreeD Controller Camera`: camera / source / sync / controller
-- `Sample Output`: UDP output
-- `Sample Debug HUD`: packet preview と diagnostics
-- `Sample Loopback Receiver`: loopback receiver
+- `FreeD Controller Camera`: camera、source、sync、controller、UDP output、loopback receiver、packet preview、diagnostics
 - `Sample Visual Rig`: camera movement の変化を見る marker 群
-- `SyncFreeDBehaviour` は挙動 preset、controller は操作 preset を参照
 
 操作:
 
@@ -32,7 +28,7 @@
 
 1. sample を import します。
 2. `Scenes/FreeDControllerSample.unity` を開きます。
-3. `FreeD Controller Camera` が挙動 preset、`Sample Output` が送信 preset、`Sample Loopback Receiver` が受信 preset を参照していることを確認します。
+3. `FreeD Controller Camera` に source、sync、controller、UDP output、loopback receiver、packet preview、diagnostics が付いていることを確認します。
 4. Play Mode に入ります。
 5. `Sample Visual Rig` を見ながらキー操作で camera を動かし、緑の `Near Target`、黄色の `Center Tower`、奥の `Depth Pole` の見え方が大きく変わることを確認します。
 6. packet preview と diagnostics、loopback 受信が更新されることを確認します。

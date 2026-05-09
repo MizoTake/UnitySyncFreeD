@@ -89,5 +89,13 @@ namespace MizoTake.SyncFreeD.Tests.Editor
 
             Assert.That(warning, Does.Contain("Multicast TTL"));
         }
+
+        [Test]
+        public void Validate_AllowsNullInterfaceList()
+        {
+            var warning = FreeDUdpConfigurationValidator.Validate(PacketSendMode.SingleDestinationUnicast, string.Empty, "127.0.0.1", 40000, null, "239.0.0.1", 40000, string.Empty, 1, 0, -1, null);
+
+            Assert.That(warning, Is.Empty);
+        }
     }
 }

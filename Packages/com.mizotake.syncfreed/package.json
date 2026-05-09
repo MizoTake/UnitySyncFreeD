@@ -4,13 +4,13 @@
   "displayName": "SyncFreeD",
   "description": "Camera sync core and Free-D output package for Unity.",
   "unity": "2022.3",
+  "license": "MIT",
   "keywords": [
     "free-d",
     "camera-sync",
     "virtual-production",
     "tracking"
   ],
-  "documentationUrl": "Documentation~/Overview.md",
   "samples": [
     {
       "displayName": "Basic Virtual Camera",
