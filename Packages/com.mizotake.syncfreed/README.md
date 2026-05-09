@@ -2,12 +2,39 @@
 
 SyncFreeD は Unity 向けの Free-D camera sync / packet output UPM package です。
 
-- Runtime Core: canonical state、synchronizer、corrector、Free-D D1 packet builder/parser
-- Unity Adapters: Unity Camera、Tracker、Replay、Controller、UDP input/output、debug/recording output
-- Editor: custom inspector、debug window、operator window、setup wizard
-- Samples: BasicVirtualCamera、ExternalTrackerSample、ReplaySample、OutputInspectorSample、FreeDControllerSample、FreeDReceiveSample
-- Sample Visual Rig: every sample scene includes shared visual markers for movement checks
-- Tests: EditMode / PlayMode
+## Installation
+
+Unity Package Manager の Git URL からインストールできます。
+
+```text
+https://github.com/MizoTake/UnitySyncFreeD.git?path=/Packages/com.mizotake.syncfreed
+```
+
+`Packages/manifest.json` に直接追加する場合は、`dependencies` に次を追加します。
+
+```json
+{
+  "dependencies": {
+    "com.mizotake.syncfreed": "https://github.com/MizoTake/UnitySyncFreeD.git?path=/Packages/com.mizotake.syncfreed"
+  }
+}
+```
+
+revision を固定する場合は、URL の末尾に branch、tag、commit を付けます。
+
+```text
+https://github.com/MizoTake/UnitySyncFreeD.git?path=/Packages/com.mizotake.syncfreed#master
+```
+
+## Features
+
+- Free-D D1 29 byte packet build / parse
+- checksum、Camera ID、User Area、FrameModulo16
+- UDP single destination unicast、multi-destination unicast、multicast、loopback
+- Unity Camera / Tracker / Replay / Controller source
+- Free-D input source と driven camera
+- diagnostics、debug output、recording output
+- Editor inspector、debug window、operator window、setup wizard
 
 ## Package Layout
 
@@ -15,7 +42,7 @@ SyncFreeD は Unity 向けの Free-D camera sync / packet output UPM package で
 - `Runtime/UnityAdapters`: Unity scene / component との接続
 - `Runtime/Networking`: UDP transport、receive hub、configuration validation
 - `Editor`: inspector、window、setup helper
-- `Samples~`: Package Manager から import する配布用 sample source
+- `Samples~`: Package Manager から import する sample source
 - `Documentation~`: Package Manager から参照する利用者向けドキュメント
 - `Tests/Editor`, `Tests/Runtime`: Unity Test Runner 用テスト
 
@@ -23,12 +50,18 @@ SyncFreeD は Unity 向けの Free-D camera sync / packet output UPM package で
 
 配布用 sample source は `Samples~` にあります。Package Manager から import すると、Unity は project 側の `Assets/Samples/...` 配下へ展開します。
 
-この開発リポジトリには、検証用に import 済みの sample fixture と shared preset を `Assets/Samples/SyncFreeD` に保持しています。配布物としての一覧は `package.json` の `samples` 配列を正とします。
+- `BasicVirtualCamera`: Unity Camera をそのまま Free-D 出力
+- `ExternalTrackerSample`: tracker 起点の pose 取得
+- `ReplaySample`: JSON / CSV replay 読み込みと frame step
+- `OutputInspectorSample`: packet preview、diagnostics、recording、loopback
+- `FreeDControllerSample`: keyboard controller から Free-D を操作
+- `FreeDReceiveSample`: Free-D multicast 受信で CG camera を駆動
+
+全 sample scene には `Sample Visual Rig` を配置しています。
 
 ## Documentation
 
 - `Documentation~/Overview.md`
-- `Documentation~/Testing.md`
 
 ## License
 

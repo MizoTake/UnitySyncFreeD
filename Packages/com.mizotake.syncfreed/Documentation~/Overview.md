@@ -15,6 +15,24 @@
 
 VISCA 実装は本 package の対象外です。
 
+## Installation
+
+Unity Package Manager の Git URL からインストールできます。
+
+```text
+https://github.com/MizoTake/UnitySyncFreeD.git?path=/Packages/com.mizotake.syncfreed
+```
+
+`Packages/manifest.json` に直接追加する場合は、`dependencies` に次を追加します。
+
+```json
+{
+  "dependencies": {
+    "com.mizotake.syncfreed": "https://github.com/MizoTake/UnitySyncFreeD.git?path=/Packages/com.mizotake.syncfreed"
+  }
+}
+```
+
 ## Architecture
 
 Core は `Runtime/Core` にあり、独立 asmdef `com.mizotake.syncfreed.core` と `noEngineReferences: true` で Unity 非依存の同期・補正・Free-D packet 処理を保持します。

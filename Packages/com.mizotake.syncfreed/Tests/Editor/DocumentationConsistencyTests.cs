@@ -7,21 +7,22 @@ namespace MizoTake.SyncFreeD.Tests.Editor
     public sealed class DocumentationConsistencyTests
     {
         [Test]
-        public void Spec_DeclaresViscaOutOfScope()
+        public void Overview_DeclaresViscaOutOfScope()
         {
-            var content = ReadProjectFile("SyncFreeD_spec.md");
+            var content = ReadProjectFile("Packages/com.mizotake.syncfreed/Documentation~/Overview.md");
             Assert.That(content, Does.Contain("VISCA 実装は本 package の対象外"));
         }
 
         [Test]
-        public void Spec_ListsMaintainedFreeDSamples()
+        public void Overview_ListsMaintainedFreeDSamples()
         {
-            var content = ReadProjectFile("SyncFreeD_spec.md");
-            Assert.That(content, Does.Contain("### 21.1 BasicVirtualCamera"));
-            Assert.That(content, Does.Contain("### 21.2 ExternalTrackerSample"));
-            Assert.That(content, Does.Contain("### 21.3 ReplaySample"));
-            Assert.That(content, Does.Contain("### 21.4 OutputInspectorSample"));
-            Assert.That(content, Does.Contain("### 21.5 FreeDControllerSample"));
+            var content = ReadProjectFile("Packages/com.mizotake.syncfreed/Documentation~/Overview.md");
+            Assert.That(content, Does.Contain("BasicVirtualCamera"));
+            Assert.That(content, Does.Contain("ExternalTrackerSample"));
+            Assert.That(content, Does.Contain("ReplaySample"));
+            Assert.That(content, Does.Contain("OutputInspectorSample"));
+            Assert.That(content, Does.Contain("FreeDControllerSample"));
+            Assert.That(content, Does.Contain("FreeDReceiveSample"));
             Assert.That(content, Does.Not.Contain("PTZDualDriveSample"));
         }
 
@@ -34,6 +35,7 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             Assert.That(content, Does.Contain("ReplaySample"));
             Assert.That(content, Does.Contain("OutputInspectorSample"));
             Assert.That(content, Does.Contain("FreeDControllerSample"));
+            Assert.That(content, Does.Contain("FreeDReceiveSample"));
             Assert.That(content, Does.Contain("Sample Visual Rig"));
             Assert.That(content, Does.Not.Contain("PTZDualDriveSample"));
         }
