@@ -6,7 +6,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
 {
     public sealed class FreeDOutput : ICameraOutput
     {
-        private readonly IFreeDPacketBuilder packetBuilder;
+        private readonly MizoTake.SyncFreeD.Core.Abstractions.IFreeDPacketBuilder packetBuilder;
         private readonly Action<byte[]> transport;
         private readonly byte[] buffer = new byte[FreeDPacketBuilder.PacketLength];
 
@@ -15,7 +15,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
         {
         }
 
-        public FreeDOutput(IFreeDPacketBuilder packetBuilder, Action<byte[]> transport)
+        public FreeDOutput(MizoTake.SyncFreeD.Core.Abstractions.IFreeDPacketBuilder packetBuilder, Action<byte[]> transport)
         {
             this.packetBuilder = packetBuilder ?? throw new ArgumentNullException(nameof(packetBuilder));
             this.transport = transport ?? throw new ArgumentNullException(nameof(transport));

@@ -18,11 +18,6 @@
       "path": "Samples~/BasicVirtualCamera"
     },
     {
-      "displayName": "PTZ DualDrive Sample",
-      "description": "DualDrive sample with command and observed VISCA bridge targets.",
-      "path": "Samples~/PTZDualDriveSample"
-    },
-    {
       "displayName": "External Tracker Sample",
       "description": "External tracker pose to Free-D sample.",
       "path": "Samples~/ExternalTrackerSample"

@@ -1,4 +1,6 @@
 using System.Collections;
+using MizoTake.SyncFreeD.Core.Abstractions;
+using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEngine;
@@ -27,6 +29,62 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(sync.LastState.Timing.FrameModulo16, Is.GreaterThanOrEqualTo((ushort)0));
 
             Object.Destroy(cameraObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SetSourceBehaviour_RejectsNonProviderAndAcceptsCameraFrameProvider()
+        {
+            var cameraObject = new GameObject("SyncFreeD Source Setter Camera");
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var nonProvider = cameraObject.AddComponent<DebugLogOutputBehaviour>();
+            var provider = cameraObject.AddComponent<FakeCameraFrameProviderBehaviour>();
+
+            yield return null;
+
+            Assert.That(sync.SetSourceBehaviour(nonProvider), Is.False);
+            Assert.That(sync.SetSourceBehaviour(provider), Is.True);
+            Assert.That(sync.SourceProvider, Is.SameAs((ICameraFrameProvider)provider));
+
+            Object.Destroy(cameraObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SetOutputBehaviour_AssignsSeparatedOutputBehaviour()
+        {
+            var cameraObject = new GameObject("SyncFreeD Output Setter Camera");
+            var outputObject = new GameObject("Separated Output");
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var output = outputObject.AddComponent<FreeDUdpOutputBehaviour>();
+
+            yield return null;
+
+            sync.SetOutputBehaviour(output);
+            Assert.That(sync.OutputBehaviour, Is.SameAs(output));
+
+            Object.Destroy(cameraObject);
+            Object.Destroy(outputObject);
+        }
+
+        private sealed class FakeCameraFrameProviderBehaviour : MonoBehaviour, ICameraFrameProvider
+        {
+            string ICameraSource.SourceId => "fake-provider";
+            CameraCapabilities ICameraSource.Capabilities => CameraCapabilities.PanTilt;
+
+            bool ICameraSource.TryGetObservedState(out CameraObservedFrame frame)
+            {
+                return ((ICameraFrameProvider)this).TryGetObservedFrame(out frame);
+            }
+
+            bool ICameraFrameProvider.TryGetObservedFrame(out CameraObservedFrame frame)
+            {
+                frame = new CameraObservedFrame { SourceId = "fake-provider", CameraId = 1, Pose = new PoseState { TimestampTicks = 1L }, Validity = new ValidityState { IsTrackingValid = true, IsLensValid = true } };
+                return true;
+            }
+
+            CameraCommandFrame ICameraFrameProvider.CaptureCommandFrame()
+            {
+                return new CameraCommandFrame { SourceId = "fake-provider", CameraId = 1, Pose = new PoseState { TimestampTicks = 1L } };
+            }
         }
     }
 }

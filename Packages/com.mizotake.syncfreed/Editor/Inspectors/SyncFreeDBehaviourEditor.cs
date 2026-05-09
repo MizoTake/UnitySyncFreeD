@@ -31,6 +31,11 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             serializedObject.Update();
             EditorGUILayout.LabelField("基本設定", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(sourceBehaviourProperty, new GUIContent("入力元 Behaviour"));
+            if (sourceBehaviourProperty.objectReferenceValue != null && !(sourceBehaviourProperty.objectReferenceValue is ICameraFrameProvider))
+            {
+                EditorGUILayout.HelpBox("入力元 Behaviour は ICameraFrameProvider を実装している必要があります。", MessageType.Error);
+            }
+
             EditorGUILayout.PropertyField(outputBehaviourProperty, new GUIContent("FreeD 出力 Behaviour"));
             EditorGUILayout.PropertyField(debugLogOutputBehaviourProperty, new GUIContent("Debug 出力 Behaviour"));
             EditorGUILayout.PropertyField(recordingOutputBehaviourProperty, new GUIContent("記録出力 Behaviour"));

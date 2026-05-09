@@ -1,4 +1,3 @@
-using System;
 using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Diagnostics;
 using MizoTake.SyncFreeD.Core.Models;
@@ -138,6 +137,32 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
         }
 
+        public bool SetSourceBehaviour(MonoBehaviour behaviour)
+        {
+            if (behaviour != null && !(behaviour is ICameraFrameProvider))
+            {
+                return false;
+            }
+
+            sourceBehaviour = behaviour;
+            return true;
+        }
+
+        public void SetOutputBehaviour(FreeDUdpOutputBehaviour behaviour)
+        {
+            outputBehaviour = behaviour;
+        }
+
+        public void SetDebugLogOutputBehaviour(DebugLogOutputBehaviour behaviour)
+        {
+            debugLogOutputBehaviour = behaviour;
+        }
+
+        public void SetRecordingOutputBehaviour(RecordingOutputBehaviour behaviour)
+        {
+            recordingOutputBehaviour = behaviour;
+        }
+
         public void ApplyProfile()
         {
             if (profileAsset == null || profileAsset.Value == null)
@@ -190,7 +215,6 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 CorrectionAppliedCount++;
             }
 
-            var packet = outputBehaviour.BuildPacket(LastOutputState);
             if (debugLogOutputBehaviour != null)
             {
                 debugLogOutputBehaviour.Send(LastOutputState);
@@ -201,13 +225,13 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 recordingOutputBehaviour.Send(LastOutputState);
             }
 
-            if (logPacketHex)
-            {
-                Debug.Log(BitConverter.ToString(packet));
-            }
-
             var effectiveSendMode = FirmwareBehaviorRoutingResolver.ResolveSendMode(outputBehaviour.SendMode, firmwareProfile);
             outputBehaviour.Send(LastOutputState, effectiveSendMode, FirmwareBehaviorRoutingResolver.ResolveAdditionalDestinationLimit(effectiveSendMode, firmwareProfile));
+            if (logPacketHex)
+            {
+                Debug.Log(outputBehaviour.LastPacketHex);
+            }
+
             return true;
         }
 

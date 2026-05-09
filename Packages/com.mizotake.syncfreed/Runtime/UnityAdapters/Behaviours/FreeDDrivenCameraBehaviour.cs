@@ -110,6 +110,17 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             return true;
         }
 
+        public bool SetSourceBehaviour(MonoBehaviour behaviour)
+        {
+            if (behaviour != null && !(behaviour is ICameraFrameProvider))
+            {
+                return false;
+            }
+
+            sourceBehaviour = behaviour;
+            return true;
+        }
+
         private void ResolveReferences()
         {
             if (sourceBehaviour == null)

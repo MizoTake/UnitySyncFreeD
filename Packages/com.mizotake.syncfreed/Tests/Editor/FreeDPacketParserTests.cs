@@ -61,7 +61,28 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             builder.Build(new CameraSyncState { CameraId = 1, Corrected = new PoseState(), CorrectedLens = new LensState { FocalLengthMm = 35d, FocusDistanceMeters = 1d, IrisFNumber = 2d } }, packet);
             packet[28] ^= 0x01;
 
-            Assert.That(new FreeDPacketParser().TryParse(packet, out _), Is.False);
+            Assert.That(new FreeDPacketParser().TryParse(packet, true, out _, out var failureReason), Is.False);
+            Assert.That(failureReason, Is.EqualTo(FreeDPacketFailureReason.ChecksumMismatch));
+        }
+
+        [Test]
+        public void TryParse_ReturnsInvalidLengthWhenPacketIsNotExactlyD1Length()
+        {
+            var parser = new FreeDPacketParser();
+
+            Assert.That(parser.TryParse(new byte[FreeDPacketBuilder.PacketLength - 1], true, out _, out var shortReason), Is.False);
+            Assert.That(shortReason, Is.EqualTo(FreeDPacketFailureReason.InvalidLength));
+            Assert.That(parser.TryParse(new byte[FreeDPacketBuilder.PacketLength + 1], true, out _, out var paddedReason), Is.False);
+            Assert.That(paddedReason, Is.EqualTo(FreeDPacketFailureReason.InvalidLength));
+        }
+
+        [Test]
+        public void TryParse_ReturnsInvalidMessageTypeWhenHeaderIsNotD1()
+        {
+            var packet = new byte[FreeDPacketBuilder.PacketLength];
+
+            Assert.That(new FreeDPacketParser().TryParse(packet, true, out _, out var failureReason), Is.False);
+            Assert.That(failureReason, Is.EqualTo(FreeDPacketFailureReason.InvalidMessageType));
         }
     }
 }

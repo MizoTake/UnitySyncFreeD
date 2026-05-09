@@ -2,6 +2,7 @@
   "name": "com.mizotake.syncfreed.runtime.tests",
   "rootNamespace": "MizoTake.SyncFreeD.Tests.Runtime",
   "references": [
+    "com.mizotake.syncfreed.core",
     "com.mizotake.syncfreed"
   ],
   "includePlatforms": [],

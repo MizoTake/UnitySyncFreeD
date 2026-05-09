@@ -10,4 +10,4 @@
 - Unity camera / tracker / replay source behaviours
 - UDP output, debug output, recording output
 - Editor inspector, debug window, setup wizard
-- Basic / ExternalTracker / Replay / OutputInspector / FreeDController sample
+- Basic / ExternalTracker / Replay / OutputInspector / FreeDController / FreeDReceive sample

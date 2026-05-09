@@ -4,7 +4,9 @@ using MizoTake.SyncFreeD.Core.Models;
 
 namespace MizoTake.SyncFreeD.Core.Outputs
 {
+#pragma warning disable CS0618
     public sealed class FreeDPacketBuilder : IFreeDPacketBuilder
+#pragma warning restore CS0618
     {
         public const int PacketLength = 29;
         public const int PacketSize = PacketLength;

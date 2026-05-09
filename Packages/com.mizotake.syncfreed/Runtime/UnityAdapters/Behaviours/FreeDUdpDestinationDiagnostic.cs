@@ -3,27 +3,49 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
     public readonly struct FreeDUdpDestinationDiagnostic
     {
         public FreeDUdpDestinationDiagnostic(string endpoint, int order, long elapsedMicroseconds, bool success)
+            : this(ParseIpAddress(endpoint), ParsePort(endpoint), order, elapsedMicroseconds, success)
         {
-            Endpoint = endpoint ?? string.Empty;
+        }
+
+        public FreeDUdpDestinationDiagnostic(string ipAddress, int port, int order, long elapsedMicroseconds, bool success)
+        {
+            IpAddress = ipAddress ?? string.Empty;
+            Port = port;
             Order = order;
             ElapsedMicroseconds = elapsedMicroseconds;
             Success = success;
         }
 
-        public string Endpoint { get; }
+        public string Endpoint => string.IsNullOrEmpty(IpAddress) ? string.Empty : $"{IpAddress}:{Port}";
         public int Order { get; }
         public long ElapsedMicroseconds { get; }
         public bool Success { get; }
         public string Label => Order == 0 ? "Primary" : $"Additional {Order}";
-        public string IpAddress => SplitEndpoint(0);
-        public int Port => int.TryParse(SplitEndpoint(1), out var port) ? port : 0;
+        public string IpAddress { get; }
+        public int Port { get; }
         public bool Succeeded => Success;
         public long OffsetMicroseconds => ElapsedMicroseconds;
 
-        private string SplitEndpoint(int index)
+        private static string ParseIpAddress(string endpoint)
         {
-            var parts = Endpoint.Split(':');
-            return index >= 0 && index < parts.Length ? parts[index] : string.Empty;
+            if (string.IsNullOrEmpty(endpoint))
+            {
+                return string.Empty;
+            }
+
+            var separatorIndex = endpoint.LastIndexOf(':');
+            return separatorIndex > 0 ? endpoint.Substring(0, separatorIndex) : endpoint;
+        }
+
+        private static int ParsePort(string endpoint)
+        {
+            if (string.IsNullOrEmpty(endpoint))
+            {
+                return 0;
+            }
+
+            var separatorIndex = endpoint.LastIndexOf(':');
+            return separatorIndex >= 0 && separatorIndex < endpoint.Length - 1 && int.TryParse(endpoint.Substring(separatorIndex + 1), out var port) ? port : 0;
         }
     }
 }

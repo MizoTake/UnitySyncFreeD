@@ -51,6 +51,22 @@ namespace MizoTake.SyncFreeD.Networking
             TotalSentCount++;
         }
 
+        public void Send(byte[] payload, IPEndPoint endPoint)
+        {
+            if (payload == null)
+            {
+                throw new ArgumentNullException(nameof(payload));
+            }
+
+            if (endPoint == null)
+            {
+                throw new ArgumentNullException(nameof(endPoint));
+            }
+
+            udpClient.Send(payload, payload.Length, endPoint);
+            TotalSentCount++;
+        }
+
         public void ConfigureMulticast(string multicastGroupIpAddress, string interfaceAddress, bool joinMulticastGroup)
         {
             ConfigureMulticast(multicastGroupIpAddress, interfaceAddress, joinMulticastGroup, ConfiguredMulticastTtl);

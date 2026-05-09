@@ -107,6 +107,60 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator Update_RecordsDropReasonWhenChecksumDoesNotMatch()
+        {
+            const int port = 41023;
+            var receiverObject = new GameObject("FreeD Input Drop Reason Receiver");
+            var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
+            SetPrivateField(receiver, "listenPort", port);
+            receiverObject.SetActive(false);
+            receiverObject.SetActive(true);
+            var packet = CreatePacket(7, 15f, -5f, 2f, 1000d, 2000d, 3000d, 35d, 4d, 2.8d, 6);
+            packet[28] ^= 0x01;
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(packet, packet.Length, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilDropped(receiver, 30);
+
+            Assert.That(receiver.ReceivedCount, Is.EqualTo(0));
+            Assert.That(receiver.DroppedPacketCount, Is.EqualTo(1));
+            Assert.That(receiver.LastDropReason, Is.EqualTo(FreeDPacketFailureReason.ChecksumMismatch));
+            Assert.That(receiver.LastDroppedPacketLength, Is.EqualTo(FreeDPacketBuilder.PacketLength));
+            Assert.That(receiver.LastDroppedPacketHex, Is.EqualTo(System.BitConverter.ToString(packet)));
+
+            Object.Destroy(receiverObject);
+        }
+
+        [UnityTest]
+        public IEnumerator Update_RecordsDropReasonWhenCameraIdFilterDoesNotMatch()
+        {
+            const int port = 41024;
+            var receiverObject = new GameObject("FreeD Input Camera Filter Drop Receiver");
+            var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
+            SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "cameraIdFilter", 8);
+            receiverObject.SetActive(false);
+            receiverObject.SetActive(true);
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(CreatePacket(7, 15f, -5f, 2f, 1000d, 2000d, 3000d, 35d, 4d, 2.8d, 6), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilDropped(receiver, 30);
+
+            Assert.That(receiver.ReceivedCount, Is.EqualTo(0));
+            Assert.That(receiver.DroppedPacketCount, Is.EqualTo(1));
+            Assert.That(receiver.LastDropReason, Is.EqualTo(FreeDPacketFailureReason.CameraIdFiltered));
+            Assert.That(receiver.LastDroppedPacketLength, Is.EqualTo(FreeDPacketBuilder.PacketLength));
+
+            Object.Destroy(receiverObject);
+        }
+
+        [UnityTest]
         public IEnumerator CaptureCommandFrame_DelegatesToConfiguredCommandSource()
         {
             const int port = 41025;
@@ -163,6 +217,19 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             for (var frame = 0; frame < maxFrames; frame++)
             {
                 if (receiver.ReceivedCount > 0)
+                {
+                    yield break;
+                }
+
+                yield return null;
+            }
+        }
+
+        private static IEnumerator WaitUntilDropped(FreeDInputSourceBehaviour receiver, int maxFrames)
+        {
+            for (var frame = 0; frame < maxFrames; frame++)
+            {
+                if (receiver.DroppedPacketCount > 0)
                 {
                     yield break;
                 }

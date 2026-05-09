@@ -61,10 +61,9 @@ namespace MizoTake.SyncFreeD.Networking
                 {
                     var remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
                     var packet = udpClient.Receive(ref remoteEndPoint);
-                    var listenerSnapshot = listeners.ToArray();
-                    for (var i = 0; i < listenerSnapshot.Length; i++)
+                    for (var i = 0; i < listeners.Count; i++)
                     {
-                        listenerSnapshot[i]?.Invoke(packet, remoteEndPoint);
+                        listeners[i]?.Invoke(packet, remoteEndPoint);
                     }
                 }
                 catch (SocketException)

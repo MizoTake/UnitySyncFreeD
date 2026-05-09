@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using MizoTake.SyncFreeD.Editor.Support;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using UnityEditor.SceneManagement;
@@ -203,6 +204,22 @@ namespace MizoTake.SyncFreeD.Tests.Editor
                 "OutputInspectorSample",
                 "ReplaySample"
             }, directories);
+        }
+
+        [Test]
+        public void PackageJsonSamplePaths_ExistInPackage()
+        {
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var packageRoot = Path.Combine(projectRoot, "Packages", "com.mizotake.syncfreed");
+            var packageJson = File.ReadAllText(Path.Combine(packageRoot, "package.json"));
+            var matches = Regex.Matches(packageJson, "\"path\"\\s*:\\s*\"([^\"]+)\"");
+            Assert.That(matches.Count, Is.GreaterThan(0), "package.json should declare samples.");
+            foreach (Match match in matches)
+            {
+                var samplePath = match.Groups[1].Value.Replace('/', Path.DirectorySeparatorChar);
+                var fullPath = Path.Combine(packageRoot, samplePath);
+                Assert.That(Directory.Exists(fullPath), Is.True, $"package.json sample path is missing: {fullPath}");
+            }
         }
 
         private static void AssertSceneExists(string scenePath)

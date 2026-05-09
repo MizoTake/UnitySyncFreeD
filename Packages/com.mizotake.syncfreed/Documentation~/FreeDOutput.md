@@ -45,6 +45,8 @@ Inspector / Debug Window では次の運用指標を確認できます。
 - `Skipped By Filter`
 - `Multicast Configured`
 
+`LastPacketHex` は runtime hot path で毎 tick 文字列化せず、Inspector / debug 表示などで参照された時点で最新 packet から生成します。
+
 Editor では multicast 用に次も補助します。
 
 - 利用可能な IPv4 NIC 一覧
@@ -59,4 +61,5 @@ Free-D の受信側では次を扱います。
 
 - `FreeDInputSourceBehaviour`: UDP unicast / multicast 受信、D1 packet parse、camera id filter
 - `FreeDInputSourceBehaviour`: 同一 UDP port を共有する複数 receiver への packet 多重配布
+- `FreeDInputSourceBehaviour`: 実機受信時の drop reason 表示（packet length / message type / checksum / camera id filter）
 - `FreeDDrivenCameraBehaviour`: 受信した pose を Transform に、lens を Unity Camera の `focalLength` / `focusDistance` に反映

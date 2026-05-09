@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net;
 using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.Core.Outputs;
 using MizoTake.SyncFreeD.Networking;
@@ -29,9 +30,30 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private readonly FreeDPacketBuilder packetBuilder = new FreeDPacketBuilder();
         private readonly byte[] packetBuffer = new byte[FreeDPacketBuilder.PacketLength];
         private readonly List<FreeDUdpDestinationDiagnostic> lastDestinationDiagnostics = new List<FreeDUdpDestinationDiagnostic>();
+        private readonly List<EndpointCacheEntry> endpointCache = new List<EndpointCacheEntry>();
         private FreeDUdpTransport transport;
+        private string lastPacketHex = string.Empty;
+        private bool hasPacket;
+        private bool lastPacketHexDirty;
 
-        public string LastPacketHex { get; private set; } = string.Empty;
+        public string LastPacketHex
+        {
+            get
+            {
+                if (!hasPacket)
+                {
+                    return string.Empty;
+                }
+
+                if (lastPacketHexDirty)
+                {
+                    lastPacketHex = BitConverter.ToString(packetBuffer);
+                    lastPacketHexDirty = false;
+                }
+
+                return lastPacketHex;
+            }
+        }
         public int LastSendSuccessCount { get; private set; }
         public int TotalSendFailureCount { get; private set; }
         public PacketSendMode SendMode => packetSendMode;
@@ -41,6 +63,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public int PacketLength => packetBuffer.Length;
         public bool LastSendSkippedByFilter { get; private set; }
         public int LastRequestedDestinationCount { get; private set; }
+        public int LastDestinationDiagnosticCount => lastDestinationDiagnostics.Count;
         public FreeDUdpDestinationDiagnostic[] LastDestinationDiagnostics => lastDestinationDiagnostics.ToArray();
         public long LastSendSpreadMicroseconds { get; private set; }
         public long LastDestinationSpreadMicroseconds => LastSendSpreadMicroseconds;
@@ -82,7 +105,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public byte[] BuildPacket(in CameraSyncState state)
         {
             packetBuilder.Build(state, packetBuffer);
-            LastPacketHex = BitConverter.ToString(packetBuffer);
+            MarkPacketBufferChanged();
             return packetBuffer;
         }
 
@@ -115,6 +138,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             cameraIdFilter = profile.CameraIdFilter;
             joinMulticastGroup = profile.JoinMulticastGroup;
             multicastInterfaceAddress = profile.MulticastInterfaceAddress ?? string.Empty;
+            endpointCache.Clear();
         }
 
         public void Send(in CameraSyncState state)
@@ -138,7 +162,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             LastSendSkippedByFilter = false;
             EnsureSocket();
             packetBuilder.Build(state, packetBuffer);
-            LastPacketHex = BitConverter.ToString(packetBuffer);
+            MarkPacketBufferChanged();
             LastSendSuccessCount = 0;
             LastEffectiveSendMode = effectiveSendMode;
             LastRequestedDestinationCount = GetRequestedDestinationCount(effectiveSendMode, additionalDestinationLimit);
@@ -181,7 +205,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             try
             {
-                transport.Send(packetBuffer, ipAddress, port);
+                transport.Send(packetBuffer, GetCachedEndpoint(ipAddress, port));
                 RecordDestinationDiagnostic(ipAddress, port, order, sendStartTimestamp, true);
                 return true;
             }
@@ -275,7 +299,28 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         private void RecordDestinationDiagnostic(string ipAddress, int port, int order, long sendStartTimestamp, bool success)
         {
             var elapsedMicroseconds = (long)(((Stopwatch.GetTimestamp() - sendStartTimestamp) * 1000000d) / Stopwatch.Frequency);
-            lastDestinationDiagnostics.Add(new FreeDUdpDestinationDiagnostic($"{ipAddress}:{port}", order, elapsedMicroseconds, success));
+            lastDestinationDiagnostics.Add(new FreeDUdpDestinationDiagnostic(ipAddress, port, order, elapsedMicroseconds, success));
+        }
+
+        private IPEndPoint GetCachedEndpoint(string ipAddress, int port)
+        {
+            for (var i = 0; i < endpointCache.Count; i++)
+            {
+                if (endpointCache[i].Matches(ipAddress, port))
+                {
+                    return endpointCache[i].EndPoint;
+                }
+            }
+
+            var endPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
+            endpointCache.Add(new EndpointCacheEntry(ipAddress, port, endPoint));
+            return endPoint;
+        }
+
+        private void MarkPacketBufferChanged()
+        {
+            hasPacket = true;
+            lastPacketHexDirty = true;
         }
 
         private void UpdateSendSpread()
@@ -299,6 +344,25 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             var clone = new FreeDUdpDestination[source.Length];
             Array.Copy(source, clone, source.Length);
             return clone;
+        }
+
+        private readonly struct EndpointCacheEntry
+        {
+            public EndpointCacheEntry(string ipAddress, int port, IPEndPoint endPoint)
+            {
+                IpAddress = ipAddress ?? string.Empty;
+                Port = port;
+                EndPoint = endPoint;
+            }
+
+            public string IpAddress { get; }
+            public int Port { get; }
+            public IPEndPoint EndPoint { get; }
+
+            public bool Matches(string ipAddress, int port)
+            {
+                return Port == port && string.Equals(IpAddress, ipAddress ?? string.Empty, StringComparison.Ordinal);
+            }
         }
     }
 }

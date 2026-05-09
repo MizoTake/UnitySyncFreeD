@@ -55,6 +55,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
 
             var diagnostics = output.LastDestinationDiagnostics;
             Assert.That(diagnostics.Length, Is.EqualTo(3));
+            Assert.That(output.LastDestinationDiagnosticCount, Is.EqualTo(3));
             Assert.That(diagnostics[0].Label, Is.EqualTo("Primary"));
             Assert.That(diagnostics[1].Order, Is.EqualTo(1));
             Assert.That(diagnostics[2].Order, Is.EqualTo(2));

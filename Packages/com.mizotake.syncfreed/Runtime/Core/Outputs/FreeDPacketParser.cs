@@ -12,21 +12,29 @@ namespace MizoTake.SyncFreeD.Core.Outputs
 
         public bool TryParse(ReadOnlySpan<byte> packet, bool validateChecksum, out CameraObservedFrame frame)
         {
-            if (packet.Length < FreeDPacketBuilder.PacketLength)
+            return TryParse(packet, validateChecksum, out frame, out _);
+        }
+
+        public bool TryParse(ReadOnlySpan<byte> packet, bool validateChecksum, out CameraObservedFrame frame, out FreeDPacketFailureReason failureReason)
+        {
+            if (packet.Length != FreeDPacketBuilder.PacketLength)
             {
                 frame = default;
+                failureReason = FreeDPacketFailureReason.InvalidLength;
                 return false;
             }
 
             if (packet[0] != 0xD1)
             {
                 frame = default;
+                failureReason = FreeDPacketFailureReason.InvalidMessageType;
                 return false;
             }
 
             if (validateChecksum && packet[28] != FreeDChecksumCalculator.Calculate(packet.Slice(0, 28)))
             {
                 frame = default;
+                failureReason = FreeDPacketFailureReason.ChecksumMismatch;
                 return false;
             }
 
@@ -66,6 +74,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
                     IsFallbackMode = false
                 }
             };
+            failureReason = FreeDPacketFailureReason.None;
             return true;
         }
 
@@ -104,5 +113,14 @@ namespace MizoTake.SyncFreeD.Core.Outputs
         {
             return encoded <= 0 ? 0d : (1 << 18) / (double)encoded;
         }
+    }
+
+    public enum FreeDPacketFailureReason
+    {
+        None = 0,
+        InvalidLength = 1,
+        InvalidMessageType = 2,
+        ChecksumMismatch = 3,
+        CameraIdFiltered = 4
     }
 }

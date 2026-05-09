@@ -36,6 +36,11 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public string LastBindError { get; private set; } = string.Empty;
         public int ReceivedCount { get; private set; }
         public int DroppedPacketCount { get; private set; }
+        public int LastPacketLength { get; private set; }
+        public FreeDPacketFailureReason LastDropReason { get; private set; }
+        public int LastDroppedPacketLength { get; private set; }
+        public string LastDroppedPacketHex { get; private set; } = string.Empty;
+        public string LastDroppedRemoteEndpoint { get; private set; } = string.Empty;
         public bool IsBound => receiveHub != null && receiveHub.IsBound;
         public FreeDUdpInputProfileAsset InputProfileAsset => inputProfileAsset;
         public bool ApplyProfileOnEnable => applyProfileOnEnable;
@@ -189,23 +194,33 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         private void HandleReceivedPacket(byte[] packet, IPEndPoint remoteEndPoint)
         {
-            if (!packetParser.TryParse(packet, validateChecksum, out var frame))
+            if (!packetParser.TryParse(packet, validateChecksum, out var frame, out var failureReason))
             {
-                DroppedPacketCount++;
+                RecordDroppedPacket(packet, remoteEndPoint, failureReason);
                 return;
             }
 
             if (cameraIdFilter >= 0 && frame.CameraId != cameraIdFilter)
             {
-                DroppedPacketCount++;
+                RecordDroppedPacket(packet, remoteEndPoint, FreeDPacketFailureReason.CameraIdFiltered);
                 return;
             }
 
             frame.SourceId = sourceId;
             lastFrame = frame;
             LastPacketHex = BitConverter.ToString(packet);
+            LastPacketLength = packet.Length;
             LastRemoteEndpoint = remoteEndPoint.ToString();
             ReceivedCount++;
+        }
+
+        private void RecordDroppedPacket(byte[] packet, IPEndPoint remoteEndPoint, FreeDPacketFailureReason reason)
+        {
+            DroppedPacketCount++;
+            LastDropReason = reason;
+            LastDroppedPacketLength = packet != null ? packet.Length : 0;
+            LastDroppedPacketHex = packet != null ? BitConverter.ToString(packet) : string.Empty;
+            LastDroppedRemoteEndpoint = remoteEndPoint != null ? remoteEndPoint.ToString() : string.Empty;
         }
     }
 }

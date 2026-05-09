@@ -19,6 +19,16 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         }
 
         [Test]
+        public void Send_WithResolvedEndpoint_IncrementsSentCount()
+        {
+            using (var transport = new FreeDUdpTransport())
+            {
+                transport.Send(new byte[] { 1, 2, 3 }, new IPEndPoint(IPAddress.Loopback, 40000));
+                Assert.That(transport.TotalSentCount, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         public void Constructor_AppliesBindAddressAndSocketBufferSize()
         {
             using (var transport = new FreeDUdpTransport("127.0.0.1", 8192))

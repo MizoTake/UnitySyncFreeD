@@ -567,8 +567,14 @@ namespace MizoTake.SyncFreeD.Editor.Windows
                 EditorGUILayout.LabelField($"Input Bound: {targetInputSource.IsBound}");
                 EditorGUILayout.LabelField($"Input Bind Error: {targetInputSource.LastBindError}");
                 EditorGUILayout.LabelField($"Input Received: {targetInputSource.ReceivedCount}");
+                EditorGUILayout.LabelField($"Input Last Packet Length: {targetInputSource.LastPacketLength}");
                 EditorGUILayout.LabelField($"Input Remote: {targetInputSource.LastRemoteEndpoint}");
                 EditorGUILayout.LabelField($"Input Packet: {targetInputSource.LastPacketHex}");
+                EditorGUILayout.LabelField($"Input Dropped: {targetInputSource.DroppedPacketCount}");
+                EditorGUILayout.LabelField($"Input Last Drop Reason: {targetInputSource.LastDropReason}");
+                EditorGUILayout.LabelField($"Input Last Dropped Length: {targetInputSource.LastDroppedPacketLength}");
+                EditorGUILayout.LabelField($"Input Last Dropped Remote: {targetInputSource.LastDroppedRemoteEndpoint}");
+                EditorGUILayout.LabelField($"Input Last Dropped Packet: {targetInputSource.LastDroppedPacketHex}");
             }
 
             if (targetLoopbackReceiver != null)
