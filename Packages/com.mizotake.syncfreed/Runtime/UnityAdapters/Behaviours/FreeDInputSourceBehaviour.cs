@@ -51,6 +51,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public bool JoinMulticastGroup => joinMulticastGroup;
         public string MulticastGroupIpAddress => multicastGroupIpAddress;
         public string MulticastInterfaceAddress => multicastInterfaceAddress;
+        public event Action<CameraObservedFrame> ObservedFrameUpdated;
 
         private void Reset()
         {
@@ -212,6 +213,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             LastPacketLength = packet.Length;
             LastRemoteEndpoint = remoteEndPoint.ToString();
             ReceivedCount++;
+            ObservedFrameUpdated?.Invoke(lastFrame);
         }
 
         private void RecordDroppedPacket(byte[] packet, IPEndPoint remoteEndPoint, FreeDPacketFailureReason reason)

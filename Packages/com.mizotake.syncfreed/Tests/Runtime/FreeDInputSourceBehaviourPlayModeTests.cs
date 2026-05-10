@@ -40,6 +40,38 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator Update_RaisesObservedFrameUpdatedForEachAcceptedPacket()
+        {
+            const int port = 41026;
+            var receiverObject = new GameObject("FreeD Input Event Receiver");
+            var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
+            var updatedCount = 0;
+            var lastUpdatedFrame = default(CameraObservedFrame);
+            receiver.ObservedFrameUpdated += frame =>
+            {
+                updatedCount++;
+                lastUpdatedFrame = frame;
+            };
+            SetPrivateField(receiver, "listenPort", port);
+            receiverObject.SetActive(false);
+            receiverObject.SetActive(true);
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(CreatePacket(7, 10f, 0f, 0f, 100d, 200d, 300d, 35d, 4d, 2.8d, 1), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+                udpClient.Send(CreatePacket(8, -10f, 0f, 0f, 400d, 500d, 600d, 55d, 6d, 4d, 2), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilReceivedCount(receiver, 2, 60);
+
+            Assert.That(updatedCount, Is.EqualTo(2));
+            Assert.That(lastUpdatedFrame.CameraId, Is.EqualTo(8));
+            Assert.That(lastUpdatedFrame.Lens.FocalLengthMm, Is.EqualTo(55d).Within(0.001d));
+
+            Object.Destroy(receiverObject);
+        }
+
+        [UnityTest]
         public IEnumerator Update_ReceivesAndParsesMulticastFreeDPacket()
         {
             const int port = 41021;
@@ -217,6 +249,19 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             for (var frame = 0; frame < maxFrames; frame++)
             {
                 if (receiver.ReceivedCount > 0)
+                {
+                    yield break;
+                }
+
+                yield return null;
+            }
+        }
+
+        private static IEnumerator WaitUntilReceivedCount(FreeDInputSourceBehaviour receiver, int expectedCount, int maxFrames)
+        {
+            for (var frame = 0; frame < maxFrames; frame++)
+            {
+                if (receiver.ReceivedCount >= expectedCount)
                 {
                     yield break;
                 }

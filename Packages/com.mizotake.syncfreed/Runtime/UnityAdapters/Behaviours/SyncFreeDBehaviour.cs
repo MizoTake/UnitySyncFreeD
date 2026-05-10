@@ -1,3 +1,4 @@
+using System;
 using MizoTake.SyncFreeD.Core.Abstractions;
 using MizoTake.SyncFreeD.Core.Diagnostics;
 using MizoTake.SyncFreeD.Core.Models;
@@ -57,6 +58,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public bool LogPacketHex => logPacketHex;
         public string FirmwareBehaviorWarning => FirmwareBehaviorProfileValidator.Validate(firmwareBehaviorProfileAsset != null ? firmwareBehaviorProfileAsset.Value : null, outputBehaviour != null ? outputBehaviour.SendMode : PacketSendMode.SingleDestinationUnicast);
         public bool HasFirmwareBehaviorWarning => !string.IsNullOrEmpty(FirmwareBehaviorWarning);
+        public event Action<CameraSyncState, CameraSyncState, SyncDiagnosticsSnapshot> StateUpdated;
 
         private void Reset()
         {
@@ -232,6 +234,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
             var effectiveSendMode = FirmwareBehaviorRoutingResolver.ResolveSendMode(outputBehaviour.SendMode, firmwareProfile);
             outputBehaviour.Send(LastOutputState, effectiveSendMode, FirmwareBehaviorRoutingResolver.ResolveAdditionalDestinationLimit(effectiveSendMode, firmwareProfile));
+            StateUpdated?.Invoke(LastState, LastOutputState, LastDiagnostics);
             if (logPacketHex)
             {
                 Debug.Log(outputBehaviour.LastPacketHex);

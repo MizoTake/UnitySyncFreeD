@@ -61,6 +61,12 @@ Free-D D1 packet は `FreeDPacketBuilder` が生成し、`FreeDPacketParser` が
 
 Inspector / Debug Window では destination count、effective send mode、send success / failure、destination spread、skipped by filter、multicast configured、packet hex、checksum、user area を確認できます。
 
+## Runtime Update Events
+
+外部 code から更新を push 型で受け取りたい場合は、Free-D input の受理済み frame は `FreeDInputSourceBehaviour.ObservedFrameUpdated`、同期 tick 後の state は `SyncFreeDBehaviour.StateUpdated` を購読します。
+
+`ObservedFrameUpdated` は checksum / camera ID filter を通過した packet が `lastFrame` に反映された後に呼ばれます。`StateUpdated` は `ManualTick`、`LateUpdate`、`FixedUpdate`、または fixed interval の tick が成功し、`LastState`、`LastOutputState`、`LastDiagnostics` が更新された後に呼ばれます。
+
 ## Samples
 
 配布用 sample source は package 内の `Samples~` 配下にあります。Package Manager から import すると、Unity project 側の `Assets/Samples/...` に展開されます。

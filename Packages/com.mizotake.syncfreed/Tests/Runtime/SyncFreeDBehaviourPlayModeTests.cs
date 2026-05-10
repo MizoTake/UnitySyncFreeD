@@ -32,6 +32,36 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator ManualTick_RaisesStateUpdatedWithCurrentValues()
+        {
+            var cameraObject = new GameObject("SyncFreeD Event Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<AudioListener>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var updatedCount = 0;
+            var eventState = default(CameraSyncState);
+            var eventOutputState = default(CameraSyncState);
+            sync.StateUpdated += (state, outputState, diagnostics) =>
+            {
+                updatedCount++;
+                eventState = state;
+                eventOutputState = outputState;
+            };
+            SetPrivateField(sync, "outputTickMode", OutputTickMode.Manual);
+
+            yield return null;
+
+            Assert.That(sync.ManualTick(), Is.True);
+            Assert.That(updatedCount, Is.EqualTo(1));
+            Assert.That(eventState.SourceId, Is.EqualTo(sync.LastState.SourceId));
+            Assert.That(eventOutputState.SourceId, Is.EqualTo(sync.LastOutputState.SourceId));
+
+            Object.Destroy(cameraObject);
+        }
+
+        [UnityTest]
         public IEnumerator SetSourceBehaviour_RejectsNonProviderAndAcceptsCameraFrameProvider()
         {
             var cameraObject = new GameObject("SyncFreeD Source Setter Camera");
@@ -63,6 +93,12 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
 
             Object.Destroy(cameraObject);
             Object.Destroy(outputObject);
+        }
+
+        private static void SetPrivateField(Object target, string fieldName, object value)
+        {
+            var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            field.SetValue(target, value);
         }
 
         private sealed class FakeCameraFrameProviderBehaviour : MonoBehaviour, ICameraFrameProvider
