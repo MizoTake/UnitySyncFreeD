@@ -84,7 +84,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public string ConfigurationWarning => FreeDUdpConfigurationValidator.Validate(packetSendMode, bindAddress, destinationIpAddress, destinationPort, additionalDestinations, multicastGroupIpAddress, multicastPort, multicastInterfaceAddress, multicastTtl, socketBufferSize, cameraIdFilter);
         public bool HasConfigurationWarning => !string.IsNullOrEmpty(ConfigurationWarning);
 
-        private void Awake()
+        private void OnEnable()
         {
             if (applyProfileOnEnable)
             {
@@ -95,10 +95,13 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            if (applyProfileOnEnable)
+            if (applyProfileOnEnable && outputProfileAsset != null && outputProfileAsset.Value != null)
             {
                 ApplyProfile();
+                return;
             }
+
+            ResetTransport();
         }
 #endif
 
@@ -139,6 +142,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             joinMulticastGroup = profile.JoinMulticastGroup;
             multicastInterfaceAddress = profile.MulticastInterfaceAddress ?? string.Empty;
             endpointCache.Clear();
+            ResetTransport();
         }
 
         public void Send(in CameraSyncState state)
@@ -378,10 +382,21 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             return count;
         }
 
+        private void OnDisable()
+        {
+            ResetTransport();
+        }
+
         private void OnDestroy()
         {
-            transport?.Dispose();
+            ResetTransport();
+        }
+
+        private void ResetTransport()
+        {
+            var previousTransport = transport;
             transport = null;
+            previousTransport?.Dispose();
         }
 
         private void RecordTimedDestinationDiagnostic(string ipAddress, int port, int order, long sendStartTimestamp, bool success)

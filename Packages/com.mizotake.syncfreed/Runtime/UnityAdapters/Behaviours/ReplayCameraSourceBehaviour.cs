@@ -28,6 +28,11 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         };
         [SerializeField] private int currentFrameIndex;
 
+        private float playbackTimeSeconds;
+        private float lastPlaybackClockTime;
+        private bool playbackClockInitialized;
+        private bool preserveInterpolatedSampleWhilePaused;
+
         public string SourceId => sourceId;
 
         public int CameraId => cameraId;
@@ -49,6 +54,11 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             {
                 ReloadReplayData();
             }
+        }
+
+        private void OnEnable()
+        {
+            ResetPlaybackClock();
         }
 
         public bool TryGetObservedState(out CameraObservedFrame frame)
@@ -91,6 +101,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             if (string.IsNullOrWhiteSpace(text))
             {
                 LastLoadError = string.Empty;
+                ResetPlaybackClock();
                 return keyframes != null && keyframes.Length > 0;
             }
 
@@ -111,8 +122,8 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             keyframes = parsedKeyframes;
-            currentFrameIndex = 0;
             LastLoadError = string.Empty;
+            ResetPlaybackClock();
             return true;
         }
 
@@ -134,7 +145,25 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public void SetPlaybackPaused(bool paused)
         {
+            if (manualFrameStep == paused)
+            {
+                return;
+            }
+
+            if (paused)
+            {
+                playbackTimeSeconds = GetPlaybackTimeSeconds();
+                currentFrameIndex = FindCurrentFrameIndex(playbackTimeSeconds);
+                preserveInterpolatedSampleWhilePaused = true;
+            }
+
             manualFrameStep = paused;
+            lastPlaybackClockTime = Time.time;
+            playbackClockInitialized = true;
+            if (!paused)
+            {
+                preserveInterpolatedSampleWhilePaused = false;
+            }
         }
 
         public bool StepForward()
@@ -165,6 +194,10 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             currentFrameIndex = Mathf.Clamp(index, 0, keyframes.Length - 1);
+            playbackTimeSeconds = GetCurrentFrameTimeSeconds();
+            lastPlaybackClockTime = Time.time;
+            playbackClockInitialized = true;
+            preserveInterpolatedSampleWhilePaused = false;
             return true;
         }
 
@@ -187,21 +220,20 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
             if (manualFrameStep)
             {
+                if (preserveInterpolatedSampleWhilePaused)
+                {
+                    return EvaluateSampleAtTime(playbackTimeSeconds);
+                }
+
                 currentFrameIndex = Mathf.Clamp(currentFrameIndex, 0, keyframes.Length - 1);
                 return Convert(keyframes[currentFrameIndex]);
             }
 
-            var duration = keyframes[keyframes.Length - 1].TimeSeconds;
-            var time = Time.time;
-            if (loop && duration > 0f)
-            {
-                time %= duration;
-            }
-            else
-            {
-                time = Mathf.Min(time, duration);
-            }
+            return EvaluateSampleAtTime(GetPlaybackTimeSeconds());
+        }
 
+        private (PoseState Pose, LensState Lens) EvaluateSampleAtTime(float time)
+        {
             for (var index = 1; index < keyframes.Length; index++)
             {
                 var previous = keyframes[index - 1];
@@ -211,6 +243,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                     continue;
                 }
 
+                currentFrameIndex = time >= next.TimeSeconds ? index : index - 1;
                 var range = Mathf.Max(0.0001f, next.TimeSeconds - previous.TimeSeconds);
                 var t = Mathf.Clamp01((time - previous.TimeSeconds) / range);
                 var position = Vector3.Lerp(previous.Position, next.Position, t);
@@ -219,7 +252,70 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 return Convert(position, rotation, focalLength);
             }
 
+            currentFrameIndex = keyframes.Length - 1;
             return Convert(keyframes[keyframes.Length - 1]);
+        }
+
+        private float GetPlaybackTimeSeconds()
+        {
+            UpdatePlaybackClock();
+            var duration = keyframes != null && keyframes.Length > 0 ? keyframes[keyframes.Length - 1].TimeSeconds : 0f;
+            if (loop && duration > 0f)
+            {
+                return playbackTimeSeconds % duration;
+            }
+
+            return Mathf.Min(playbackTimeSeconds, duration);
+        }
+
+        private void UpdatePlaybackClock()
+        {
+            var currentTime = Time.time;
+            if (!playbackClockInitialized)
+            {
+                lastPlaybackClockTime = currentTime;
+                playbackClockInitialized = true;
+                return;
+            }
+
+            if (!manualFrameStep)
+            {
+                playbackTimeSeconds += Mathf.Max(0f, currentTime - lastPlaybackClockTime);
+            }
+
+            lastPlaybackClockTime = currentTime;
+        }
+
+        private int FindCurrentFrameIndex(float timeSeconds)
+        {
+            if (keyframes == null || keyframes.Length == 0)
+            {
+                return 0;
+            }
+
+            for (var index = keyframes.Length - 1; index >= 0; index--)
+            {
+                if (timeSeconds >= keyframes[index].TimeSeconds)
+                {
+                    return index;
+                }
+            }
+
+            return 0;
+        }
+
+        private float GetCurrentFrameTimeSeconds()
+        {
+            return keyframes != null && keyframes.Length > 0 ? keyframes[Mathf.Clamp(currentFrameIndex, 0, keyframes.Length - 1)].TimeSeconds : 0f;
+        }
+
+        private void ResetPlaybackClock()
+        {
+            playbackTimeSeconds = 0f;
+            lastPlaybackClockTime = Time.time;
+            playbackClockInitialized = true;
+            currentFrameIndex = 0;
+            preserveInterpolatedSampleWhilePaused = false;
         }
 
         private static (PoseState Pose, LensState Lens) Convert(ReplayPoseKeyframe keyframe)

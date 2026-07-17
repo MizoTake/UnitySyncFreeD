@@ -5,6 +5,13 @@
   "description": "Camera sync core and Free-D output package for Unity.",
   "unity": "2022.3",
   "license": "MIT",
+  "documentationUrl": "https://github.com/MizoTake/UnitySyncFreeD/blob/master/Packages/com.mizotake.syncfreed/Documentation~/Overview.md",
+  "changelogUrl": "https://github.com/MizoTake/UnitySyncFreeD/blob/master/Packages/com.mizotake.syncfreed/CHANGELOG.md",
+  "licensesUrl": "https://github.com/MizoTake/UnitySyncFreeD/blob/master/Packages/com.mizotake.syncfreed/LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MizoTake/UnitySyncFreeD.git"
+  },
   "keywords": [
     "free-d",
     "camera-sync",
@@ -44,6 +51,7 @@
     }
   ],
   "author": {
-    "name": "MizoTake"
+    "name": "MizoTake",
+    "url": "https://github.com/MizoTake"
   }
 }

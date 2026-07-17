@@ -59,6 +59,72 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Object.Destroy(replayObject);
         }
 
+        [UnityTest]
+        public IEnumerator PlaybackClock_StartsFromLoadTimeInsteadOfGlobalTime()
+        {
+            yield return new WaitForSeconds(0.1f);
+            var replayObject = new GameObject("Replay Local Clock Source");
+            var replay = replayObject.AddComponent<ReplayCameraSourceBehaviour>();
+            SetPrivateField(replay, "loop", false);
+            Assert.That(replay.LoadReplayData(CreateLinearReplayCsv(1f), ReplayDataFormat.Csv), Is.True);
+
+            Assert.That(replay.TryGetObservedFrame(out var frame), Is.True);
+            Assert.That(frame.Pose.Xmm, Is.LessThan(100d));
+
+            Object.Destroy(replayObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SetPlaybackPaused_FreezesAndResumesLocalPlaybackClock()
+        {
+            var replayObject = new GameObject("Replay Pause Resume Source");
+            var replay = replayObject.AddComponent<ReplayCameraSourceBehaviour>();
+            SetPrivateField(replay, "loop", false);
+            Assert.That(replay.LoadReplayData(CreateLinearReplayCsv(1f), ReplayDataFormat.Csv), Is.True);
+
+            yield return new WaitForSeconds(0.12f);
+            Assert.That(replay.TryGetObservedFrame(out var beforePauseFrame), Is.True);
+            replay.SetPlaybackPaused(true);
+            Assert.That(replay.TryGetObservedFrame(out var pausedFrame), Is.True);
+            Assert.That(pausedFrame.Pose.Xmm, Is.EqualTo(beforePauseFrame.Pose.Xmm).Within(20d));
+
+            yield return new WaitForSeconds(0.12f);
+            Assert.That(replay.TryGetObservedFrame(out var stillPausedFrame), Is.True);
+            Assert.That(stillPausedFrame.Pose.Xmm, Is.EqualTo(pausedFrame.Pose.Xmm).Within(0.001d));
+
+            replay.SetPlaybackPaused(false);
+            yield return new WaitForSeconds(0.12f);
+            Assert.That(replay.TryGetObservedFrame(out var resumedFrame), Is.True);
+            Assert.That(resumedFrame.Pose.Xmm, Is.GreaterThan(stillPausedFrame.Pose.Xmm + 50d));
+
+            Object.Destroy(replayObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ReEnable_RestartsPlaybackFromBeginning()
+        {
+            var replayObject = new GameObject("Replay Re-enable Source");
+            var replay = replayObject.AddComponent<ReplayCameraSourceBehaviour>();
+            SetPrivateField(replay, "loop", false);
+            Assert.That(replay.LoadReplayData(CreateLinearReplayCsv(1f), ReplayDataFormat.Csv), Is.True);
+
+            yield return new WaitForSeconds(0.12f);
+            Assert.That(replay.TryGetObservedFrame(out var progressedFrame), Is.True);
+            Assert.That(progressedFrame.Pose.Xmm, Is.GreaterThan(50d));
+
+            replay.enabled = false;
+            replay.enabled = true;
+            Assert.That(replay.TryGetObservedFrame(out var restartedFrame), Is.True);
+            Assert.That(restartedFrame.Pose.Xmm, Is.LessThan(50d));
+
+            Object.Destroy(replayObject);
+        }
+
+        private static string CreateLinearReplayCsv(float durationSeconds)
+        {
+            return $"TimeSeconds,PositionX,PositionY,PositionZ,RotationX,RotationY,RotationZ,FocalLengthMm\n0,0,1,-10,0,0,0,35\n{durationSeconds},1,1,-10,0,0,0,50";
+        }
+
         private static void SetPrivateField(Object target, string fieldName, object value)
         {
             var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);

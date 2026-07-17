@@ -151,11 +151,11 @@
       "url": "https://packages.unity.com"
     },
     "com.yucchiy.unicli-server": {
-      "version": "https://github.com/yucchiy/UniCli.git?path=src/UniCli.Unity/Packages/com.yucchiy.unicli-server#v1.3.0",
+      "version": "https://github.com/yucchiy/UniCli.git?path=src/UniCli.Unity/Packages/com.yucchiy.unicli-server#v1.6.0",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "faee979f6e8e20dbabcca742a126d92e956918a7"
+      "hash": "297c28ec9e8b1117df6aba607d6238f1addf8209"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",

@@ -15,6 +15,17 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
         private SerializedProperty recordingOutputBehaviourProperty;
         private SerializedProperty profileAssetProperty;
         private SerializedProperty applyProfileOnAwakeProperty;
+        private SerializedProperty syncModeProperty;
+        private SerializedProperty outputPoseKindProperty;
+        private SerializedProperty tuningProfileAssetProperty;
+        private SerializedProperty deviceProfileAssetProperty;
+        private SerializedProperty firmwareBehaviorProfileAssetProperty;
+        private SerializedProperty lensProfileAssetProperty;
+        private SerializedProperty mountProfileAssetProperty;
+        private SerializedProperty outputTickModeProperty;
+        private SerializedProperty fixedIntervalMsProperty;
+        private SerializedProperty tuningProperty;
+        private SerializedProperty logPacketHexProperty;
 
         private void OnEnable()
         {
@@ -24,6 +35,17 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             recordingOutputBehaviourProperty = serializedObject.FindProperty("recordingOutputBehaviour");
             profileAssetProperty = serializedObject.FindProperty("profileAsset");
             applyProfileOnAwakeProperty = serializedObject.FindProperty("applyProfileOnAwake");
+            syncModeProperty = serializedObject.FindProperty("syncMode");
+            outputPoseKindProperty = serializedObject.FindProperty("outputPoseKind");
+            tuningProfileAssetProperty = serializedObject.FindProperty("tuningProfileAsset");
+            deviceProfileAssetProperty = serializedObject.FindProperty("deviceProfileAsset");
+            firmwareBehaviorProfileAssetProperty = serializedObject.FindProperty("firmwareBehaviorProfileAsset");
+            lensProfileAssetProperty = serializedObject.FindProperty("lensProfileAsset");
+            mountProfileAssetProperty = serializedObject.FindProperty("mountProfileAsset");
+            outputTickModeProperty = serializedObject.FindProperty("outputTickMode");
+            fixedIntervalMsProperty = serializedObject.FindProperty("fixedIntervalMs");
+            tuningProperty = serializedObject.FindProperty("tuning");
+            logPacketHexProperty = serializedObject.FindProperty("logPacketHex");
         }
 
         public override void OnInspectorGUI()
@@ -43,7 +65,22 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EditorGUILayout.LabelField("挙動 preset", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(profileAssetProperty, new GUIContent("挙動設定 Asset"));
             EditorGUILayout.PropertyField(applyProfileOnAwakeProperty, new GUIContent("開始時に preset を反映"));
-            EditorGUILayout.HelpBox(profileAssetProperty.objectReferenceValue != null ? "同期方法や delay などの挙動設定は preset Asset 側で編集します。" : "挙動設定 Asset が未設定です。component の現在値で動作しますが、運用では preset Asset 参照を推奨します。", profileAssetProperty.objectReferenceValue != null ? MessageType.Info : MessageType.Warning);
+            var profileAssigned = profileAssetProperty.objectReferenceValue != null;
+            var profileControlsSettings = profileAssigned && applyProfileOnAwakeProperty.boolValue;
+            if (profileControlsSettings)
+            {
+                EditorGUILayout.HelpBox("開始時に preset を反映するため、同期設定は Asset 側で編集します。", MessageType.Info);
+            }
+            else if (profileAssigned)
+            {
+                EditorGUILayout.HelpBox("自動反映が無効なため、下の component 設定を直接編集できます。Apply Preset Now を押した時だけ Asset の値で上書きします。", MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("挙動設定 Asset が未設定です。下の component 設定を直接編集できます。", MessageType.Warning);
+            }
+
+            DrawCurrentSettings(profileControlsSettings);
             serializedObject.ApplyModifiedProperties();
 
             using (new EditorGUI.DisabledScope(profileAssetProperty.objectReferenceValue == null))
@@ -61,7 +98,6 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
                 EditorGUILayout.HelpBox(behaviour.FirmwareBehaviorWarning, MessageType.Warning);
             }
 
-            DrawCurrentSettings(behaviour);
             if (EditorApplication.isPlaying)
             {
                 DrawRuntimeStatus(behaviour);
@@ -70,27 +106,32 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             DrawTools();
         }
 
-        private void DrawCurrentSettings(SyncFreeDBehaviour behaviour)
+        private void DrawCurrentSettings(bool readOnly)
         {
-            var expanded = BeginSection("current-settings", "現在の適用値", true);
+            var expanded = BeginSection("current-settings", readOnly ? "現在の適用値" : "Component 同期設定", true);
             if (expanded)
             {
-                using (new EditorGUI.DisabledScope(true))
+                using (new EditorGUI.DisabledScope(readOnly))
                 {
-                    EditorGUILayout.EnumPopup("同期方法", behaviour.SyncMode);
-                    EditorGUILayout.EnumPopup("どの姿勢を送るか", behaviour.OutputPoseKind);
-                    EditorGUILayout.EnumPopup("送信タイミング", behaviour.OutputTickMode);
-                    if (behaviour.OutputTickMode == OutputTickMode.FixedInterval)
+                    EditorGUILayout.PropertyField(syncModeProperty, new GUIContent("同期方法"));
+                    EditorGUILayout.PropertyField(outputPoseKindProperty, new GUIContent("どの姿勢を送るか"));
+                    EditorGUILayout.PropertyField(outputTickModeProperty, new GUIContent("送信タイミング"));
+                    if ((OutputTickMode)outputTickModeProperty.enumValueIndex == OutputTickMode.FixedInterval)
                     {
-                        EditorGUILayout.IntField("一定周期送信(ms)", behaviour.FixedIntervalMs);
+                        EditorGUILayout.PropertyField(fixedIntervalMsProperty, new GUIContent("一定周期送信(ms)"));
                     }
 
-                    EditorGUILayout.Toggle("Packet Hex を Console に出す", behaviour.LogPacketHex);
-                    EditorGUILayout.ObjectField("Tuning Asset", behaviour.TuningProfileAsset, typeof(SyncTuningProfileAsset), false);
-                    EditorGUILayout.ObjectField("Device Asset", behaviour.DeviceProfileAsset, typeof(DeviceProfileAsset), false);
-                    EditorGUILayout.ObjectField("Firmware Asset", behaviour.FirmwareBehaviorProfileAsset, typeof(FirmwareBehaviorProfileAsset), false);
-                    EditorGUILayout.ObjectField("Lens Asset", behaviour.LensProfileAsset, typeof(LensProfileAsset), false);
-                    EditorGUILayout.ObjectField("Mount Asset", behaviour.MountProfileAsset, typeof(MountProfileAsset), false);
+                    EditorGUILayout.PropertyField(logPacketHexProperty, new GUIContent("Packet Hex を Console に出す"));
+                    EditorGUILayout.PropertyField(tuningProfileAssetProperty, new GUIContent("Tuning Asset"));
+                    if (tuningProfileAssetProperty.objectReferenceValue == null)
+                    {
+                        EditorGUILayout.PropertyField(tuningProperty, new GUIContent("Component Tuning"), true);
+                    }
+
+                    EditorGUILayout.PropertyField(deviceProfileAssetProperty, new GUIContent("Device Asset"));
+                    EditorGUILayout.PropertyField(firmwareBehaviorProfileAssetProperty, new GUIContent("Firmware Asset"));
+                    EditorGUILayout.PropertyField(lensProfileAssetProperty, new GUIContent("Lens Asset"));
+                    EditorGUILayout.PropertyField(mountProfileAssetProperty, new GUIContent("Mount Asset"));
                 }
             }
 

@@ -57,7 +57,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (applyProfileOnEnable)
             {
-                ApplyProfile();
+                ApplyProfileValues();
             }
         }
 
@@ -65,7 +65,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (applyProfileOnEnable)
             {
-                ApplyProfile();
+                ApplyProfileValues();
             }
             TryBind();
         }
@@ -75,10 +75,10 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (applyProfileOnEnable)
             {
-                ApplyProfile();
+                ApplyProfileValues();
             }
 
-            if (!Application.isPlaying)
+            if (!Application.isPlaying || !isActiveAndEnabled)
             {
                 return;
             }
@@ -168,9 +168,22 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public void ApplyProfile()
         {
-            if (inputProfileAsset == null || inputProfileAsset.Value == null)
+            if (!ApplyProfileValues())
             {
                 return;
+            }
+
+            if (Application.isPlaying && isActiveAndEnabled)
+            {
+                Rebind();
+            }
+        }
+
+        private bool ApplyProfileValues()
+        {
+            if (inputProfileAsset == null || inputProfileAsset.Value == null)
+            {
+                return false;
             }
 
             var profile = inputProfileAsset.Value;
@@ -181,6 +194,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             joinMulticastGroup = profile.JoinMulticastGroup;
             multicastGroupIpAddress = profile.MulticastGroupIpAddress ?? "239.0.0.1";
             multicastInterfaceAddress = profile.MulticastInterfaceAddress ?? string.Empty;
+            return true;
         }
 
         private ICameraFrameProvider ResolveCommandSource()

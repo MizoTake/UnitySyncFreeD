@@ -1,27 +1,34 @@
 using System;
 using System.Collections;
+using System.IO;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace MizoTake.SyncFreeD.Tests.Runtime
 {
+    [PrebuildSetup(typeof(PackageSampleImportSetup))]
+    [PostBuildCleanup(typeof(PackageSampleImportSetup))]
     public sealed class SampleSceneStartupPlayModeTests
     {
+        private const string ImportedSamplesRoot = "Assets/__SyncFreeDPackageSampleVerification";
         private static readonly string[] SampleScenePaths =
         {
-            "Assets/Samples/SyncFreeD/BasicVirtualCamera/Scenes/BasicVirtualCamera.unity",
-            "Assets/Samples/SyncFreeD/ReplaySample/Scenes/ReplaySample.unity",
-            "Assets/Samples/SyncFreeD/ExternalTrackerSample/Scenes/ExternalTrackerSample.unity",
-            "Assets/Samples/SyncFreeD/OutputInspectorSample/Scenes/OutputInspectorSample.unity",
-            "Assets/Samples/SyncFreeD/FreeDControllerSample/Scenes/FreeDControllerSample.unity",
-            "Assets/Samples/SyncFreeD/FreeDReceiveSample/Scenes/FreeDReceiveSample.unity"
+            ImportedSamplesRoot + "/BasicVirtualCamera/Scenes/BasicVirtualCamera.unity",
+            ImportedSamplesRoot + "/ReplaySample/Scenes/ReplaySample.unity",
+            ImportedSamplesRoot + "/ExternalTrackerSample/Scenes/ExternalTrackerSample.unity",
+            ImportedSamplesRoot + "/OutputInspectorSample/Scenes/OutputInspectorSample.unity",
+            ImportedSamplesRoot + "/FreeDControllerSample/Scenes/FreeDControllerSample.unity",
+            ImportedSamplesRoot + "/FreeDReceiveSample/Scenes/FreeDReceiveSample.unity"
         };
 
         [UnityTest]
-        public IEnumerator AssetsSamples_OpenAndInitializeCoreBehaviours()
+        public IEnumerator ImportedPackageSamples_OpenAndInitializeCoreBehaviours()
         {
             foreach (var scenePath in SampleScenePaths)
             {
@@ -78,5 +85,57 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
 
             yield return null;
         }
+    }
+
+    public sealed class PackageSampleImportSetup : IPrebuildSetup, IPostBuildCleanup
+    {
+        private const string ImportedSamplesRoot = "Assets/__SyncFreeDPackageSampleVerification";
+
+        public void Setup()
+        {
+#if UNITY_EDITOR
+            CleanupImportedSamples();
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var packageSamplesRoot = Path.Combine(projectRoot, "Packages", "com.mizotake.syncfreed", "Samples~");
+            var importedSamplesRoot = Path.Combine(projectRoot, ImportedSamplesRoot.Replace('/', Path.DirectorySeparatorChar));
+            CopyDirectory(packageSamplesRoot, importedSamplesRoot);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+#endif
+        }
+
+        public void Cleanup()
+        {
+#if UNITY_EDITOR
+            CleanupImportedSamples();
+#endif
+        }
+
+#if UNITY_EDITOR
+        private static void CleanupImportedSamples()
+        {
+            if (AssetDatabase.IsValidFolder(ImportedSamplesRoot))
+            {
+                AssetDatabase.DeleteAsset(ImportedSamplesRoot);
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
+        }
+
+        private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+        {
+            Directory.CreateDirectory(destinationDirectory);
+            foreach (var sourceFile in Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+            {
+                if (sourceFile.EndsWith(".unity.meta", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var relativePath = sourceFile.Substring(sourceDirectory.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var destinationFile = Path.Combine(destinationDirectory, relativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationFile));
+                File.Copy(sourceFile, destinationFile, true);
+            }
+        }
+#endif
     }
 }

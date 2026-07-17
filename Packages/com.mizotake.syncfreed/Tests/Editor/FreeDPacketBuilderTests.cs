@@ -85,6 +85,35 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             Assert.That(ReadUInt16(buffer, 26), Is.EqualTo(FreeDEncoding.EncodeUserArea(2.8d, 2)));
         }
 
+        [Test]
+        public void Build_UsesFallbackLensValuesWhenCorrectedLensIsNotFinite()
+        {
+            var builder = new FreeDPacketBuilder();
+            var state = new CameraSyncState
+            {
+                Corrected = new PoseState(),
+                Lens = new LensState
+                {
+                    FocalLengthMm = 35d,
+                    FocusDistanceMeters = 4d,
+                    IrisFNumber = 2.8d
+                },
+                CorrectedLens = new LensState
+                {
+                    FocalLengthMm = double.NaN,
+                    FocusDistanceMeters = double.PositiveInfinity,
+                    IrisFNumber = double.NegativeInfinity
+                }
+            };
+            var buffer = new byte[FreeDPacketBuilder.PacketLength];
+
+            builder.Build(state, buffer);
+
+            Assert.That(ReadUInt24(buffer, 20), Is.EqualTo(FreeDEncoding.EncodeZoom24(35d)));
+            Assert.That(ReadUInt24(buffer, 23), Is.EqualTo(FreeDEncoding.EncodeFocus24(4d)));
+            Assert.That(ReadUInt16(buffer, 26), Is.EqualTo(FreeDEncoding.EncodeUserArea(2.8d, 0)));
+        }
+
         private static CameraSyncState CreateState()
         {
             return new CameraSyncState

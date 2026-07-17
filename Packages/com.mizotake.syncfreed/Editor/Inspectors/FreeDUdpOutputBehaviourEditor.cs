@@ -11,11 +11,35 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
     {
         private SerializedProperty outputProfileAssetProperty;
         private SerializedProperty applyProfileOnEnableProperty;
+        private SerializedProperty packetSendModeProperty;
+        private SerializedProperty destinationIpAddressProperty;
+        private SerializedProperty destinationPortProperty;
+        private SerializedProperty additionalDestinationsProperty;
+        private SerializedProperty multicastGroupIpAddressProperty;
+        private SerializedProperty multicastPortProperty;
+        private SerializedProperty multicastTtlProperty;
+        private SerializedProperty bindAddressProperty;
+        private SerializedProperty socketBufferSizeProperty;
+        private SerializedProperty cameraIdFilterProperty;
+        private SerializedProperty joinMulticastGroupProperty;
+        private SerializedProperty multicastInterfaceAddressProperty;
 
         private void OnEnable()
         {
             outputProfileAssetProperty = serializedObject.FindProperty("outputProfileAsset");
             applyProfileOnEnableProperty = serializedObject.FindProperty("applyProfileOnEnable");
+            packetSendModeProperty = serializedObject.FindProperty("packetSendMode");
+            destinationIpAddressProperty = serializedObject.FindProperty("destinationIpAddress");
+            destinationPortProperty = serializedObject.FindProperty("destinationPort");
+            additionalDestinationsProperty = serializedObject.FindProperty("additionalDestinations");
+            multicastGroupIpAddressProperty = serializedObject.FindProperty("multicastGroupIpAddress");
+            multicastPortProperty = serializedObject.FindProperty("multicastPort");
+            multicastTtlProperty = serializedObject.FindProperty("multicastTtl");
+            bindAddressProperty = serializedObject.FindProperty("bindAddress");
+            socketBufferSizeProperty = serializedObject.FindProperty("socketBufferSize");
+            cameraIdFilterProperty = serializedObject.FindProperty("cameraIdFilter");
+            joinMulticastGroupProperty = serializedObject.FindProperty("joinMulticastGroup");
+            multicastInterfaceAddressProperty = serializedObject.FindProperty("multicastInterfaceAddress");
         }
 
         public override void OnInspectorGUI()
@@ -24,7 +48,22 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EditorGUILayout.LabelField("送信 preset", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(outputProfileAssetProperty, new GUIContent("送信設定 Asset"));
             EditorGUILayout.PropertyField(applyProfileOnEnableProperty, new GUIContent("開始時に preset を反映"));
-            EditorGUILayout.HelpBox(outputProfileAssetProperty.objectReferenceValue != null ? "送信先や NIC 設定は送信設定 Asset 側で編集します。" : "送信設定 Asset が未設定です。component の現在値で動作しますが、運用では Asset 参照を推奨します。", outputProfileAssetProperty.objectReferenceValue != null ? MessageType.Info : MessageType.Warning);
+            var profileAssigned = outputProfileAssetProperty.objectReferenceValue != null;
+            var profileControlsSettings = profileAssigned && applyProfileOnEnableProperty.boolValue;
+            if (profileControlsSettings)
+            {
+                EditorGUILayout.HelpBox("開始時に preset を反映するため、送信設定は Asset 側で編集します。", MessageType.Info);
+            }
+            else if (profileAssigned)
+            {
+                EditorGUILayout.HelpBox("自動反映が無効なため、下の component 設定を直接編集できます。Apply Preset Now を押した時だけ Asset の値で上書きします。", MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("送信設定 Asset が未設定です。下の component 設定を直接編集できます。", MessageType.Warning);
+            }
+
+            DrawCurrentSettings(profileControlsSettings);
             serializedObject.ApplyModifiedProperties();
 
             using (new EditorGUI.DisabledScope(outputProfileAssetProperty.objectReferenceValue == null))
@@ -42,7 +81,6 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
                 EditorGUILayout.HelpBox(behaviour.ConfigurationWarning, MessageType.Warning);
             }
 
-            DrawCurrentSettings(behaviour);
             if (behaviour.SendMode == Networking.PacketSendMode.Multicast)
             {
                 DrawMulticastSupportSummary(behaviour);
@@ -54,32 +92,32 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             }
         }
 
-        private void DrawCurrentSettings(FreeDUdpOutputBehaviour behaviour)
+        private void DrawCurrentSettings(bool readOnly)
         {
-            var expanded = BeginSection("current-settings", "現在の適用値", true);
+            var expanded = BeginSection("current-settings", readOnly ? "現在の適用値" : "Component 送信設定", true);
             if (expanded)
             {
-                using (new EditorGUI.DisabledScope(true))
+                using (new EditorGUI.DisabledScope(readOnly))
                 {
-                    EditorGUILayout.EnumPopup("送信のしかた", behaviour.SendMode);
-                    EditorGUILayout.TextField("送信元 IP", FormatOptionalValue(behaviour.BindAddress, "自動"));
-                    EditorGUILayout.IntField("送信バッファサイズ", behaviour.SocketBufferSize);
-                    EditorGUILayout.TextField("送る Camera ID", behaviour.CameraIdFilter >= 0 ? behaviour.CameraIdFilter.ToString() : "すべて");
-                    switch (behaviour.SendMode)
+                    EditorGUILayout.PropertyField(packetSendModeProperty, new GUIContent("送信のしかた"));
+                    EditorGUILayout.PropertyField(bindAddressProperty, new GUIContent("送信元 IP", "空欄の場合は OS が NIC を選択します。"));
+                    EditorGUILayout.PropertyField(socketBufferSizeProperty, new GUIContent("送信バッファサイズ"));
+                    EditorGUILayout.PropertyField(cameraIdFilterProperty, new GUIContent("送る Camera ID", "-1 の場合はすべての Camera ID を送信します。"));
+                    switch ((Networking.PacketSendMode)packetSendModeProperty.enumValueIndex)
                     {
                         case Networking.PacketSendMode.SingleDestinationUnicast:
-                            DrawPrimaryDestination(behaviour);
+                            DrawPrimaryDestination();
                             break;
                         case Networking.PacketSendMode.MultiDestinationUnicast:
-                            DrawPrimaryDestination(behaviour);
-                            DrawAdditionalDestinations(behaviour);
+                            DrawPrimaryDestination();
+                            EditorGUILayout.PropertyField(additionalDestinationsProperty, new GUIContent("追加送信先"), true);
                             break;
                         case Networking.PacketSendMode.Multicast:
-                            EditorGUILayout.TextField("Multicast Group", behaviour.MulticastGroupIpAddress);
-                            EditorGUILayout.IntField("Multicast Port", behaviour.MulticastPort);
-                            EditorGUILayout.IntField("Multicast TTL", behaviour.MulticastTtl);
-                            EditorGUILayout.Toggle("Join Multicast Group", behaviour.JoinMulticastGroup);
-                            EditorGUILayout.TextField("Multicast Interface", FormatOptionalValue(behaviour.MulticastInterfaceAddress, "自動"));
+                            EditorGUILayout.PropertyField(multicastGroupIpAddressProperty, new GUIContent("Multicast Group"));
+                            EditorGUILayout.PropertyField(multicastPortProperty, new GUIContent("Multicast Port"));
+                            EditorGUILayout.PropertyField(multicastTtlProperty, new GUIContent("Multicast TTL"));
+                            EditorGUILayout.PropertyField(joinMulticastGroupProperty, new GUIContent("Join Multicast Group"));
+                            EditorGUILayout.PropertyField(multicastInterfaceAddressProperty, new GUIContent("Multicast Interface", "空欄の場合は OS が NIC を選択します。"));
                             break;
                     }
                 }
@@ -146,26 +184,10 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EndSection();
         }
 
-        private static void DrawPrimaryDestination(FreeDUdpOutputBehaviour behaviour)
+        private void DrawPrimaryDestination()
         {
-            EditorGUILayout.TextField("送り先 IP", behaviour.DestinationIpAddress);
-            EditorGUILayout.IntField("送り先 Port", behaviour.DestinationPort);
-        }
-
-        private static void DrawAdditionalDestinations(FreeDUdpOutputBehaviour behaviour)
-        {
-            var destinations = behaviour.AdditionalDestinations;
-            if (destinations.Length == 0)
-            {
-                EditorGUILayout.LabelField("追加送信先", "なし");
-                return;
-            }
-
-            for (var i = 0; i < destinations.Length; i++)
-            {
-                var destination = destinations[i];
-                EditorGUILayout.TextField($"追加送信先 {i + 1}", $"{destination.IpAddress}:{destination.Port} {(destination.Enabled ? "Enabled" : "Disabled")}");
-            }
+            EditorGUILayout.PropertyField(destinationIpAddressProperty, new GUIContent("送り先 IP"));
+            EditorGUILayout.PropertyField(destinationPortProperty, new GUIContent("送り先 Port"));
         }
 
         private bool BeginSection(string key, string label, bool defaultExpanded)
@@ -182,9 +204,5 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
-        private static string FormatOptionalValue(string value, string fallback)
-        {
-            return string.IsNullOrWhiteSpace(value) ? fallback : value;
-        }
     }
 }

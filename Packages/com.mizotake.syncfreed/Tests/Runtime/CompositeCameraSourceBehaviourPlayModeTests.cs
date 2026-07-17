@@ -54,6 +54,48 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator TryGetObservedFrame_WithPoseLensMarkedInvalid_DoesNotPromoteLensValidity()
+        {
+            var root = new GameObject("Composite Invalid Pose Lens");
+            var replay = root.AddComponent<ReplayCameraSourceBehaviour>();
+            var composite = root.AddComponent<CompositeCameraSourceBehaviour>();
+            SetPrivateField(replay, "lensValid", false);
+            SetPrivateField(composite, "poseSourceBehaviour", replay);
+            SetPrivateField(composite, "lensSourceBehaviour", replay);
+
+            yield return null;
+
+            Assert.That(composite.TryGetLensState(out _), Is.False);
+            Assert.That(composite.TryGetObservedFrame(out var frame), Is.True);
+            Assert.That(frame.Validity.IsTrackingValid, Is.True);
+            Assert.That(frame.Validity.IsLensValid, Is.False);
+            Assert.That(frame.Validity.IsDegraded, Is.True);
+
+            Object.Destroy(root);
+        }
+
+        [UnityTest]
+        public IEnumerator TryGetObservedFrame_WithPoseLensMarkedValid_PreservesLensValidity()
+        {
+            var root = new GameObject("Composite Valid Pose Lens");
+            var replay = root.AddComponent<ReplayCameraSourceBehaviour>();
+            var composite = root.AddComponent<CompositeCameraSourceBehaviour>();
+            SetPrivateField(replay, "lensValid", true);
+            SetPrivateField(composite, "poseSourceBehaviour", replay);
+            SetPrivateField(composite, "lensSourceBehaviour", replay);
+
+            yield return null;
+
+            Assert.That(composite.TryGetLensState(out _), Is.True);
+            Assert.That(composite.TryGetObservedFrame(out var frame), Is.True);
+            Assert.That(frame.Validity.IsTrackingValid, Is.True);
+            Assert.That(frame.Validity.IsLensValid, Is.True);
+            Assert.That(frame.Validity.IsDegraded, Is.False);
+
+            Object.Destroy(root);
+        }
+
+        [UnityTest]
         public IEnumerator ManualTick_WithCompositeSource_ProducesState()
         {
             var root = new GameObject("Composite Sync Source");

@@ -25,8 +25,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
                 return 0;
             }
 
-            var scaled = (int)Math.Round(focalLengthMm * 1000d, MidpointRounding.AwayFromZero);
-            return Math.Clamp(scaled, 0, Unsigned24Max);
+            return RoundAndClamp(focalLengthMm * 1000d, 0, Unsigned24Max);
         }
 
         public static int EncodeFocus24(double focusDistanceMeters)
@@ -36,8 +35,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
                 return 0;
             }
 
-            var scaled = (int)Math.Round((1d / focusDistanceMeters) * (1 << 18), MidpointRounding.AwayFromZero);
-            return Math.Clamp(scaled, 0, Signed24Max);
+            return RoundAndClamp((1d / focusDistanceMeters) * (1 << 18), 0, Signed24Max);
         }
 
         public static ushort EncodeUserArea(double irisFNumber, ushort frameModulo16)
@@ -45,7 +43,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
             var iris = 0;
             if (!double.IsNaN(irisFNumber) && !double.IsInfinity(irisFNumber) && irisFNumber > 0d)
             {
-                iris = Math.Clamp((int)Math.Round(irisFNumber * 100d, MidpointRounding.AwayFromZero), 0, 0x0FFF);
+                iris = RoundAndClamp(irisFNumber * 100d, 0, 0x0FFF);
             }
 
             var frame = (frameModulo16 & 0x000F) << 12;
@@ -83,8 +81,27 @@ namespace MizoTake.SyncFreeD.Core.Outputs
                 return 0;
             }
 
-            var scaled = (int)Math.Round(value * (1 << fractionalBits), MidpointRounding.AwayFromZero);
-            return Math.Clamp(scaled, Signed24Min, Signed24Max);
+            return RoundAndClamp(value * (1 << fractionalBits), Signed24Min, Signed24Max);
+        }
+
+        private static int RoundAndClamp(double value, int minimum, int maximum)
+        {
+            if (double.IsNaN(value))
+            {
+                return minimum;
+            }
+
+            if (value <= minimum)
+            {
+                return minimum;
+            }
+
+            if (value >= maximum)
+            {
+                return maximum;
+            }
+
+            return (int)Math.Round(value, MidpointRounding.AwayFromZero);
         }
     }
 }

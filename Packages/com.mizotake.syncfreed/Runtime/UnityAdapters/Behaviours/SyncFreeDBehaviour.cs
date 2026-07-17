@@ -201,7 +201,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             var sourceProvider = SourceProvider;
-            if (sourceProvider == null || outputBehaviour == null)
+            if (sourceProvider == null)
             {
                 return false;
             }
@@ -222,23 +222,27 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 CorrectionAppliedCount++;
             }
 
-            if (debugLogOutputBehaviour != null)
+            if (debugLogOutputBehaviour != null && debugLogOutputBehaviour.isActiveAndEnabled)
             {
                 debugLogOutputBehaviour.Send(LastOutputState);
             }
 
-            if (recordingOutputBehaviour != null)
+            if (recordingOutputBehaviour != null && recordingOutputBehaviour.isActiveAndEnabled)
             {
                 recordingOutputBehaviour.Send(LastOutputState);
             }
 
-            var effectiveSendMode = FirmwareBehaviorRoutingResolver.ResolveSendMode(outputBehaviour.SendMode, firmwareProfile);
-            outputBehaviour.Send(LastOutputState, effectiveSendMode, FirmwareBehaviorRoutingResolver.ResolveAdditionalDestinationLimit(effectiveSendMode, firmwareProfile));
-            StateUpdated?.Invoke(LastState, LastOutputState, LastDiagnostics);
-            if (logPacketHex)
+            if (outputBehaviour != null && outputBehaviour.isActiveAndEnabled)
             {
-                Debug.Log(outputBehaviour.LastPacketHex);
+                var effectiveSendMode = FirmwareBehaviorRoutingResolver.ResolveSendMode(outputBehaviour.SendMode, firmwareProfile);
+                outputBehaviour.Send(LastOutputState, effectiveSendMode, FirmwareBehaviorRoutingResolver.ResolveAdditionalDestinationLimit(effectiveSendMode, firmwareProfile));
+                if (logPacketHex)
+                {
+                    Debug.Log(outputBehaviour.LastPacketHex);
+                }
             }
+
+            StateUpdated?.Invoke(LastState, LastOutputState, LastDiagnostics);
 
             return true;
         }

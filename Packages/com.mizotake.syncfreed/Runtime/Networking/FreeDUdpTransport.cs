@@ -75,12 +75,6 @@ namespace MizoTake.SyncFreeD.Networking
         public void ConfigureMulticast(string multicastGroupIpAddress, string interfaceAddress, bool joinMulticastGroup, int multicastTtl)
         {
             var clampedTtl = Math.Clamp(multicastTtl, 1, 255);
-            var normalizedInterfaceAddress = interfaceAddress ?? string.Empty;
-            if (IsMulticastConfigured && configuredMulticastGroup == multicastGroupIpAddress && configuredMulticastInterface == normalizedInterfaceAddress && ConfiguredMulticastTtl == clampedTtl)
-            {
-                return;
-            }
-
             if (ConfiguredMulticastTtl != clampedTtl)
             {
                 ConfiguredMulticastTtl = clampedTtl;
@@ -89,30 +83,54 @@ namespace MizoTake.SyncFreeD.Networking
 
             if (!joinMulticastGroup || string.IsNullOrWhiteSpace(multicastGroupIpAddress))
             {
-                IsMulticastConfigured = false;
-                configuredMulticastGroup = string.Empty;
-                configuredMulticastInterface = string.Empty;
+                DropConfiguredMulticastGroup();
                 return;
             }
 
-            if (IsMulticastConfigured && configuredMulticastGroup == multicastGroupIpAddress && configuredMulticastInterface == normalizedInterfaceAddress)
+            var groupAddress = IPAddress.Parse(multicastGroupIpAddress.Trim());
+            var normalizedGroupAddress = groupAddress.ToString();
+            var interfaceIpAddress = string.IsNullOrWhiteSpace(interfaceAddress) ? null : IPAddress.Parse(interfaceAddress.Trim());
+            var normalizedInterfaceAddress = interfaceIpAddress?.ToString() ?? string.Empty;
+            if (IsMulticastConfigured && configuredMulticastGroup == normalizedGroupAddress && configuredMulticastInterface == normalizedInterfaceAddress)
             {
                 return;
             }
 
-            var groupAddress = IPAddress.Parse(multicastGroupIpAddress);
-            if (string.IsNullOrWhiteSpace(interfaceAddress))
+            DropConfiguredMulticastGroup();
+            if (interfaceIpAddress == null)
             {
                 udpClient.JoinMulticastGroup(groupAddress);
             }
             else
             {
-                udpClient.JoinMulticastGroup(groupAddress, IPAddress.Parse(interfaceAddress));
+                udpClient.JoinMulticastGroup(groupAddress, interfaceIpAddress);
             }
 
             IsMulticastConfigured = true;
-            configuredMulticastGroup = multicastGroupIpAddress;
+            configuredMulticastGroup = normalizedGroupAddress;
             configuredMulticastInterface = normalizedInterfaceAddress;
+        }
+
+        private void DropConfiguredMulticastGroup()
+        {
+            if (!IsMulticastConfigured)
+            {
+                return;
+            }
+
+            var groupAddress = IPAddress.Parse(configuredMulticastGroup);
+            if (string.IsNullOrEmpty(configuredMulticastInterface))
+            {
+                udpClient.DropMulticastGroup(groupAddress);
+            }
+            else
+            {
+                udpClient.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DropMembership, new MulticastOption(groupAddress, IPAddress.Parse(configuredMulticastInterface)));
+            }
+
+            IsMulticastConfigured = false;
+            configuredMulticastGroup = string.Empty;
+            configuredMulticastInterface = string.Empty;
         }
 
         public void Dispose()

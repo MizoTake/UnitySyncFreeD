@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using MizoTake.SyncFreeD.Editor.Support;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -11,6 +12,8 @@ namespace MizoTake.SyncFreeD.Tests.Editor
 {
     public sealed class SampleScenesTests
     {
+        private const string ImportedPackageSampleRoot = "Assets/__SyncFreeDPackageSampleEditModeVerification";
+
         [Test]
         public void BasicVirtualCameraSample_AssetExists()
         {
@@ -62,6 +65,31 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             AssertFileContains("Packages/com.mizotake.syncfreed/Samples~/FreeDReceiveSample/Scenes/FreeDReceiveSample.unity", "m_Name: Sample Visual Rig");
             AssertFileContains("Packages/com.mizotake.syncfreed/Samples~/OutputInspectorSample/Scenes/OutputInspectorSample.unity", "m_Name: Sample Visual Rig");
             AssertFileContains("Packages/com.mizotake.syncfreed/Samples~/ReplaySample/Scenes/ReplaySample.unity", "m_Name: Sample Visual Rig");
+        }
+
+        [TestCase("BasicVirtualCamera", "BasicVirtualCamera.unity")]
+        [TestCase("ExternalTrackerSample", "ExternalTrackerSample.unity")]
+        [TestCase("FreeDControllerSample", "FreeDControllerSample.unity")]
+        [TestCase("FreeDReceiveSample", "FreeDReceiveSample.unity")]
+        [TestCase("OutputInspectorSample", "OutputInspectorSample.unity")]
+        [TestCase("ReplaySample", "ReplaySample.unity")]
+        public void PackageSample_ImportsWithResolvedScriptsAndReferences(string sampleName, string sceneFileName)
+        {
+            var scenePath = ImportPackageSample(sampleName, sceneFileName);
+            try
+            {
+                var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                var roots = scene.GetRootGameObjects();
+                Assert.That(roots.Length, Is.GreaterThan(0), $"Imported package sample has no roots: {scenePath}");
+                AssertSceneHasNoMissingScriptsOrReferences(roots, scenePath);
+                AssertExpectedSampleBehaviour(sampleName, roots, scenePath);
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(ImportedPackageSampleRoot);
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
         }
 
         [Test]
@@ -240,6 +268,82 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             var fullPath = Path.Combine(projectRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
             Assert.That(File.Exists(fullPath), Is.True, $"Missing asset: {fullPath}");
             Assert.That(File.ReadAllText(fullPath), Does.Contain(expectedText), $"Missing text '{expectedText}' in {fullPath}");
+        }
+
+        private static string ImportPackageSample(string sampleName, string sceneFileName)
+        {
+            if (AssetDatabase.IsValidFolder(ImportedPackageSampleRoot))
+            {
+                AssetDatabase.DeleteAsset(ImportedPackageSampleRoot);
+            }
+
+            var projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            var sourceDirectory = Path.Combine(projectRoot, "Packages", "com.mizotake.syncfreed", "Samples~", sampleName);
+            var destinationDirectory = Path.Combine(projectRoot, ImportedPackageSampleRoot.Replace('/', Path.DirectorySeparatorChar), sampleName);
+            Directory.CreateDirectory(destinationDirectory);
+            foreach (var sourceFile in Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+            {
+                if (sourceFile.EndsWith(".unity.meta", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var relativePath = sourceFile.Substring(sourceDirectory.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var destinationFile = Path.Combine(destinationDirectory, relativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationFile));
+                File.Copy(sourceFile, destinationFile, true);
+            }
+
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+            return $"{ImportedPackageSampleRoot}/{sampleName}/Scenes/{sceneFileName}";
+        }
+
+        private static void AssertSceneHasNoMissingScriptsOrReferences(GameObject[] roots, string scenePath)
+        {
+            foreach (var root in roots)
+            {
+                foreach (var transform in root.GetComponentsInChildren<Transform>(true))
+                {
+                    var gameObject = transform.gameObject;
+                    Assert.That(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(gameObject), Is.EqualTo(0), $"Missing script on {gameObject.name}: {scenePath}");
+                    foreach (var component in gameObject.GetComponents<Component>())
+                    {
+                        if (component == null)
+                        {
+                            continue;
+                        }
+
+                        var serializedObject = new SerializedObject(component);
+                        var property = serializedObject.GetIterator();
+                        while (property.NextVisible(true))
+                        {
+                            if (property.propertyType == SerializedPropertyType.ObjectReference && property.objectReferenceValue == null && property.objectReferenceInstanceIDValue != 0)
+                            {
+                                Assert.Fail($"Missing reference {property.propertyPath} on {gameObject.name}: {scenePath}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void AssertExpectedSampleBehaviour(string sampleName, GameObject[] roots, string scenePath)
+        {
+            var behaviours = roots.SelectMany(root => root.GetComponentsInChildren<MonoBehaviour>(true)).ToArray();
+            if (sampleName == "FreeDControllerSample")
+            {
+                Assert.That(behaviours.OfType<FreeDControllerBehaviour>().Any(), Is.True, $"FreeDControllerBehaviour missing: {scenePath}");
+                return;
+            }
+
+            if (sampleName == "FreeDReceiveSample")
+            {
+                Assert.That(behaviours.OfType<FreeDInputSourceBehaviour>().Any(), Is.True, $"FreeDInputSourceBehaviour missing: {scenePath}");
+                Assert.That(behaviours.OfType<FreeDDrivenCameraBehaviour>().Any(), Is.True, $"FreeDDrivenCameraBehaviour missing: {scenePath}");
+                return;
+            }
+
+            Assert.That(behaviours.OfType<SyncFreeDBehaviour>().Any(), Is.True, $"SyncFreeDBehaviour missing: {scenePath}");
         }
     }
 }

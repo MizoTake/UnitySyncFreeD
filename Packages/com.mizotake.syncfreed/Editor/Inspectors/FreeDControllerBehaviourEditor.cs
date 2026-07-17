@@ -11,6 +11,14 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
         private SerializedProperty controlledCameraProperty;
         private SerializedProperty profileAssetProperty;
         private SerializedProperty applyProfileOnAwakeProperty;
+        private SerializedProperty allowKeyboardControlProperty;
+        private SerializedProperty useUnscaledTimeProperty;
+        private SerializedProperty moveSpeedMetersPerSecondProperty;
+        private SerializedProperty rotateSpeedDegreesPerSecondProperty;
+        private SerializedProperty rollSpeedDegreesPerSecondProperty;
+        private SerializedProperty focalLengthSpeedMmPerSecondProperty;
+        private SerializedProperty focusDistanceSpeedMetersPerSecondProperty;
+        private SerializedProperty boostMultiplierProperty;
 
         private void OnEnable()
         {
@@ -18,6 +26,14 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             controlledCameraProperty = serializedObject.FindProperty("controlledCamera");
             profileAssetProperty = serializedObject.FindProperty("profileAsset");
             applyProfileOnAwakeProperty = serializedObject.FindProperty("applyProfileOnAwake");
+            allowKeyboardControlProperty = serializedObject.FindProperty("allowKeyboardControl");
+            useUnscaledTimeProperty = serializedObject.FindProperty("useUnscaledTime");
+            moveSpeedMetersPerSecondProperty = serializedObject.FindProperty("moveSpeedMetersPerSecond");
+            rotateSpeedDegreesPerSecondProperty = serializedObject.FindProperty("rotateSpeedDegreesPerSecond");
+            rollSpeedDegreesPerSecondProperty = serializedObject.FindProperty("rollSpeedDegreesPerSecond");
+            focalLengthSpeedMmPerSecondProperty = serializedObject.FindProperty("focalLengthSpeedMmPerSecond");
+            focusDistanceSpeedMetersPerSecondProperty = serializedObject.FindProperty("focusDistanceSpeedMetersPerSecond");
+            boostMultiplierProperty = serializedObject.FindProperty("boostMultiplier");
         }
 
         public override void OnInspectorGUI()
@@ -30,7 +46,22 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             EditorGUILayout.LabelField("操作 preset", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(profileAssetProperty, new GUIContent("操作 preset Asset"));
             EditorGUILayout.PropertyField(applyProfileOnAwakeProperty, new GUIContent("開始時に preset を反映"));
-            EditorGUILayout.HelpBox(profileAssetProperty.objectReferenceValue != null ? "操作パラメーターは操作 preset Asset 側で編集します。" : "操作 preset Asset が未設定です。component の現在値で動作しますが、運用では Asset 参照を推奨します。", profileAssetProperty.objectReferenceValue != null ? MessageType.Info : MessageType.Warning);
+            var profileAssigned = profileAssetProperty.objectReferenceValue != null;
+            var profileControlsSettings = profileAssigned && applyProfileOnAwakeProperty.boolValue;
+            if (profileControlsSettings)
+            {
+                EditorGUILayout.HelpBox("開始時に preset を反映するため、操作設定は Asset 側で編集します。", MessageType.Info);
+            }
+            else if (profileAssigned)
+            {
+                EditorGUILayout.HelpBox("自動反映が無効なため、下の component 設定を直接編集できます。Apply Preset Now を押した時だけ Asset の値で上書きします。", MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("操作 preset Asset が未設定です。下の component 設定を直接編集できます。", MessageType.Warning);
+            }
+
+            DrawPresetSnapshot(profileControlsSettings);
             serializedObject.ApplyModifiedProperties();
 
             using (new EditorGUI.DisabledScope(profileAssetProperty.objectReferenceValue == null))
@@ -43,7 +74,6 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             }
 
             var behaviour = (FreeDControllerBehaviour)target;
-            DrawPresetSnapshot(behaviour);
             if (behaviour.AllowKeyboardControl)
             {
                 DrawKeyboardHelp();
@@ -52,21 +82,21 @@ namespace MizoTake.SyncFreeD.Editor.Inspectors
             DrawTools();
         }
 
-        private void DrawPresetSnapshot(FreeDControllerBehaviour behaviour)
+        private void DrawPresetSnapshot(bool readOnly)
         {
-            var expanded = BeginSection("current-settings", "現在の適用値", true);
+            var expanded = BeginSection("current-settings", readOnly ? "現在の適用値" : "Component 操作設定", true);
             if (expanded)
             {
-                using (new EditorGUI.DisabledScope(true))
+                using (new EditorGUI.DisabledScope(readOnly))
                 {
-                    EditorGUILayout.Toggle("キーボード操作", behaviour.AllowKeyboardControl);
-                    EditorGUILayout.Toggle("Unscaled Time", behaviour.UseUnscaledTime);
-                    EditorGUILayout.FloatField("移動の速さ", behaviour.MoveSpeedMetersPerSecond);
-                    EditorGUILayout.FloatField("向き変更の速さ", behaviour.RotateSpeedDegreesPerSecond);
-                    EditorGUILayout.FloatField("傾き変更の速さ", behaviour.RollSpeedDegreesPerSecond);
-                    EditorGUILayout.FloatField("ズーム変更の速さ", behaviour.FocalLengthSpeedMmPerSecond);
-                    EditorGUILayout.FloatField("フォーカス変更の速さ", behaviour.FocusDistanceSpeedMetersPerSecond);
-                    EditorGUILayout.FloatField("Shift 加速倍率", behaviour.BoostMultiplier);
+                    EditorGUILayout.PropertyField(allowKeyboardControlProperty, new GUIContent("キーボード操作"));
+                    EditorGUILayout.PropertyField(useUnscaledTimeProperty, new GUIContent("Unscaled Time"));
+                    EditorGUILayout.PropertyField(moveSpeedMetersPerSecondProperty, new GUIContent("移動の速さ"));
+                    EditorGUILayout.PropertyField(rotateSpeedDegreesPerSecondProperty, new GUIContent("向き変更の速さ"));
+                    EditorGUILayout.PropertyField(rollSpeedDegreesPerSecondProperty, new GUIContent("傾き変更の速さ"));
+                    EditorGUILayout.PropertyField(focalLengthSpeedMmPerSecondProperty, new GUIContent("ズーム変更の速さ"));
+                    EditorGUILayout.PropertyField(focusDistanceSpeedMetersPerSecondProperty, new GUIContent("フォーカス変更の速さ"));
+                    EditorGUILayout.PropertyField(boostMultiplierProperty, new GUIContent("Shift 加速倍率"));
                 }
             }
 

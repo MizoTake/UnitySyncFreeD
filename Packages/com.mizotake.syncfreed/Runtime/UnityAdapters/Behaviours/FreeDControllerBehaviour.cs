@@ -10,14 +10,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private Camera controlledCamera;
         [SerializeField] private FreeDControllerProfileAsset profileAsset;
         [SerializeField] private bool applyProfileOnAwake = true;
-        private bool allowKeyboardControl = true;
-        private bool useUnscaledTime = true;
-        private float moveSpeedMetersPerSecond = 2f;
-        private float rotateSpeedDegreesPerSecond = 60f;
-        private float rollSpeedDegreesPerSecond = 45f;
-        private float focalLengthSpeedMmPerSecond = 20f;
-        private float focusDistanceSpeedMetersPerSecond = 1f;
-        private float boostMultiplier = 3f;
+        [SerializeField] private bool allowKeyboardControl = true;
+        [SerializeField] private bool useUnscaledTime = true;
+        [SerializeField] private float moveSpeedMetersPerSecond = 2f;
+        [SerializeField] private float rotateSpeedDegreesPerSecond = 60f;
+        [SerializeField] private float rollSpeedDegreesPerSecond = 45f;
+        [SerializeField] private float focalLengthSpeedMmPerSecond = 20f;
+        [SerializeField] private float focusDistanceSpeedMetersPerSecond = 1f;
+        [SerializeField] private float boostMultiplier = 3f;
 
         private Vector3 initialLocalPosition;
         private Quaternion initialLocalRotation;

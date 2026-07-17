@@ -125,7 +125,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             var poseSource = ResolvePoseSource();
-            if (poseSource != null && poseSource.TryGetObservedFrame(out var poseFrame))
+            if (poseSource != null && poseSource.TryGetObservedFrame(out var poseFrame) && poseFrame.Validity.IsLensValid)
             {
                 lens = poseFrame.Lens;
                 return true;

@@ -31,7 +31,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (applyProfileOnEnable)
             {
-                ApplyProfile();
+                ApplyProfileValues();
             }
         }
 
@@ -40,7 +40,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (applyProfileOnEnable)
             {
-                ApplyProfile();
+                ApplyProfileValues();
+            }
+
+            if (Application.isPlaying && isActiveAndEnabled)
+            {
+                Rebind();
             }
         }
 #endif
@@ -49,9 +54,14 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (applyProfileOnEnable)
             {
-                ApplyProfile();
+                ApplyProfileValues();
             }
 
+            TryBind();
+        }
+
+        private void TryBind()
+        {
             try
             {
                 var localAddress = string.IsNullOrWhiteSpace(bindAddress) ? IPAddress.Any : IPAddress.Parse(bindAddress);
@@ -101,14 +111,35 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         public void ApplyProfile()
         {
-            if (inputProfileAsset == null || inputProfileAsset.Value == null)
+            if (!ApplyProfileValues())
             {
                 return;
+            }
+
+            if (Application.isPlaying && isActiveAndEnabled)
+            {
+                Rebind();
+            }
+        }
+
+        private bool ApplyProfileValues()
+        {
+            if (inputProfileAsset == null || inputProfileAsset.Value == null)
+            {
+                return false;
             }
 
             var profile = inputProfileAsset.Value;
             bindAddress = profile.BindAddress ?? string.Empty;
             listenPort = profile.ListenPort;
+            return true;
+        }
+
+        private void Rebind()
+        {
+            udpClient?.Dispose();
+            udpClient = null;
+            TryBind();
         }
 
         private void OnDisable()

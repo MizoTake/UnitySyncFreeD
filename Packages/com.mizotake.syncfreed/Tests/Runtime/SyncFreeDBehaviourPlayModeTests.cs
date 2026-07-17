@@ -62,6 +62,78 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator ManualTick_WithDisabledOutput_UpdatesStateWithoutSendingPacket()
+        {
+            var cameraObject = new GameObject("SyncFreeD Disabled Output Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<AudioListener>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            var output = cameraObject.AddComponent<FreeDUdpOutputBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            SetPrivateField(sync, "outputTickMode", OutputTickMode.Manual);
+            output.enabled = false;
+            var updatedCount = 0;
+            sync.StateUpdated += (state, outputState, diagnostics) => updatedCount++;
+
+            yield return null;
+
+            Assert.That(sync.ManualTick(), Is.True);
+            Assert.That(sync.LastState.SourceId, Is.Not.Empty);
+            Assert.That(updatedCount, Is.EqualTo(1));
+            Assert.That(output.LastPacketHex, Is.Empty);
+
+            Object.Destroy(cameraObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ManualTick_WithInactiveOutputObject_UpdatesStateWithoutSendingPacket()
+        {
+            var cameraObject = new GameObject("SyncFreeD Inactive Output Camera");
+            var outputObject = new GameObject("Inactive Output");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<AudioListener>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            var output = outputObject.AddComponent<FreeDUdpOutputBehaviour>();
+            sync.SetOutputBehaviour(output);
+            SetPrivateField(sync, "outputTickMode", OutputTickMode.Manual);
+            outputObject.SetActive(false);
+            var updatedCount = 0;
+            sync.StateUpdated += (state, outputState, diagnostics) => updatedCount++;
+
+            yield return null;
+
+            Assert.That(sync.ManualTick(), Is.True);
+            Assert.That(updatedCount, Is.EqualTo(1));
+            Assert.That(output.LastPacketHex, Is.Empty);
+
+            Object.Destroy(cameraObject);
+            Object.Destroy(outputObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ManualTick_WithoutUdpOutput_StillUpdatesStateAndEvent()
+        {
+            var cameraObject = new GameObject("SyncFreeD State Only Camera");
+            cameraObject.AddComponent<Camera>();
+            cameraObject.AddComponent<AudioListener>();
+            cameraObject.AddComponent<UnityCameraSourceBehaviour>();
+            var sync = cameraObject.AddComponent<SyncFreeDBehaviour>();
+            SetPrivateField(sync, "outputTickMode", OutputTickMode.Manual);
+            var updatedCount = 0;
+            sync.StateUpdated += (state, outputState, diagnostics) => updatedCount++;
+
+            yield return null;
+
+            Assert.That(sync.ManualTick(), Is.True);
+            Assert.That(sync.LastState.SourceId, Is.Not.Empty);
+            Assert.That(sync.LastOutputState.SourceId, Is.EqualTo(sync.LastState.SourceId));
+            Assert.That(updatedCount, Is.EqualTo(1));
+
+            Object.Destroy(cameraObject);
+        }
+
+        [UnityTest]
         public IEnumerator SetSourceBehaviour_RejectsNonProviderAndAcceptsCameraFrameProvider()
         {
             var cameraObject = new GameObject("SyncFreeD Source Setter Camera");
