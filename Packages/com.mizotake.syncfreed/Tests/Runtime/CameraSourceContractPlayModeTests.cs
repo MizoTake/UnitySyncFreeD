@@ -26,5 +26,27 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
 
             Object.Destroy(sourceObject);
         }
+
+        [UnityTest]
+        public IEnumerator DualDriveSource_ResolvesGenericCommandAndObservedTargets()
+        {
+            var sourceObject = new GameObject("Dual Drive Source");
+            sourceObject.SetActive(false);
+            var commandTarget = new GameObject("Command Target").transform;
+            commandTarget.SetParent(sourceObject.transform, false);
+            commandTarget.localPosition = new Vector3(1f, 2f, 3f);
+            var observedTarget = new GameObject("Observed Target").transform;
+            observedTarget.SetParent(sourceObject.transform, false);
+            observedTarget.localPosition = new Vector3(4f, 5f, 6f);
+            var source = sourceObject.AddComponent<DualDriveTransformSourceBehaviour>();
+            sourceObject.SetActive(true);
+
+            Assert.That(source.TryGetObservedFrame(out var observedFrame), Is.True);
+            Assert.That(observedFrame.Pose.Xmm, Is.EqualTo(4000d).Within(0.001d));
+            Assert.That(source.CaptureCommandFrame().Pose.Xmm, Is.EqualTo(1000d).Within(0.001d));
+
+            Object.Destroy(sourceObject);
+            yield return null;
+        }
     }
 }

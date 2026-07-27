@@ -301,6 +301,8 @@ MonoBehaviour:
   joinMulticastGroup: 1
   multicastGroupIpAddress: 239.10.10.10
   multicastInterfaceAddress: 
+  packetDecodingPreset: 0
+  builtInPacketDecodingProfileId: ''
 --- !u!81 &553085809
 AudioListener:
   m_ObjectHideFlags: 0

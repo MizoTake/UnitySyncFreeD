@@ -22,18 +22,23 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         [SerializeField] private bool joinMulticastGroup;
         [SerializeField] private string multicastGroupIpAddress = "239.0.0.1";
         [SerializeField] private string multicastInterfaceAddress = string.Empty;
+        [SerializeField] private FreeDPacketDecodingPreset packetDecodingPreset = FreeDPacketDecodingPreset.RawUnsigned24;
+        [SerializeField] private string builtInPacketDecodingProfileId = string.Empty;
+        [SerializeField] private FreeDPacketDecodingProfile customPacketDecodingProfile = new FreeDPacketDecodingProfile();
         [SerializeField] private MonoBehaviour commandSourceBehaviour;
 
         private readonly FreeDPacketParser packetParser = new FreeDPacketParser();
+        private FreeDPacketDecodingProfile packetDecodingProfile = FreeDPacketDecodingProfiles.Create(FreeDPacketDecodingPreset.RawUnsigned24);
         private FreeDUdpReceiveHub receiveHub;
         private CameraObservedFrame lastFrame;
 
         public string SourceId => sourceId;
         public int CameraId => lastFrame.CameraId;
-        public CameraCapabilities Capabilities => CameraCapabilities.PanTilt | CameraCapabilities.Roll | CameraCapabilities.Position | CameraCapabilities.Zoom | CameraCapabilities.Focus | CameraCapabilities.Iris | CameraCapabilities.ExternalTracking;
+        public CameraCapabilities Capabilities => packetDecodingProfile != null ? packetDecodingProfile.Capabilities : CameraCapabilities.None;
         public string LastPacketHex { get; private set; } = string.Empty;
         public string LastRemoteEndpoint { get; private set; } = string.Empty;
         public string LastBindError { get; private set; } = string.Empty;
+        public string LastProfileError { get; private set; } = string.Empty;
         public int ReceivedCount { get; private set; }
         public int DroppedPacketCount { get; private set; }
         public int LastPacketLength { get; private set; }
@@ -51,6 +56,9 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public bool JoinMulticastGroup => joinMulticastGroup;
         public string MulticastGroupIpAddress => multicastGroupIpAddress;
         public string MulticastInterfaceAddress => multicastInterfaceAddress;
+        public FreeDPacketDecodingPreset PacketDecodingPreset => packetDecodingPreset;
+        public string BuiltInPacketDecodingProfileId => builtInPacketDecodingProfileId;
+        public string EffectivePacketDecodingProfileName => packetDecodingProfile?.ProfileName ?? string.Empty;
         public event Action<CameraObservedFrame> ObservedFrameUpdated;
 
         private void Reset()
@@ -67,6 +75,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             {
                 ApplyProfileValues();
             }
+            RefreshPacketDecodingProfile();
             TryBind();
         }
 
@@ -77,6 +86,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             {
                 ApplyProfileValues();
             }
+            RefreshPacketDecodingProfile();
 
             if (!Application.isPlaying || !isActiveAndEnabled)
             {
@@ -124,7 +134,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         public bool TryGetLensState(out LensState lens)
         {
             lens = lastFrame.Lens;
-            return lastFrame.Lens.FocalLengthMm > 0d || lastFrame.Lens.FocusDistanceMeters > 0d || lastFrame.Lens.IrisFNumber > 0d;
+            return lastFrame.Pose.TimestampTicks != 0L && lastFrame.Validity.IsLensValid;
         }
 
         public void SetInputProfileAsset(FreeDUdpInputProfileAsset profileAsset, bool applyImmediately)
@@ -172,6 +182,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             {
                 return;
             }
+            RefreshPacketDecodingProfile();
 
             if (Application.isPlaying && isActiveAndEnabled)
             {
@@ -194,7 +205,30 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             joinMulticastGroup = profile.JoinMulticastGroup;
             multicastGroupIpAddress = profile.MulticastGroupIpAddress ?? "239.0.0.1";
             multicastInterfaceAddress = profile.MulticastInterfaceAddress ?? string.Empty;
+            packetDecodingPreset = profile.PacketDecodingPreset;
+            builtInPacketDecodingProfileId = profile.BuiltInPacketDecodingProfileId ?? string.Empty;
+            customPacketDecodingProfile = profile.CustomPacketDecodingProfile;
             return true;
+        }
+
+        private void RefreshPacketDecodingProfile()
+        {
+            var candidate = packetDecodingPreset == FreeDPacketDecodingPreset.Custom && customPacketDecodingProfile != null ? customPacketDecodingProfile : FreeDPacketDecodingProfiles.Create(packetDecodingPreset, builtInPacketDecodingProfileId);
+            if (packetDecodingPreset == FreeDPacketDecodingPreset.BuiltInDeviceProfile && candidate == null)
+            {
+                packetDecodingProfile = FreeDPacketDecodingProfiles.CreateFailClosedRaw();
+                LastProfileError = $"Built-in D1 decoding profile id '{builtInPacketDecodingProfileId}' is not registered.";
+                return;
+            }
+            if (FreeDPacketDecodingProfileValidator.TryValidate(candidate, out var profileError))
+            {
+                packetDecodingProfile = candidate;
+                LastProfileError = string.Empty;
+                return;
+            }
+
+            packetDecodingProfile = FreeDPacketDecodingProfiles.CreateFailClosedRaw();
+            LastProfileError = profileError;
         }
 
         private ICameraFrameProvider ResolveCommandSource()
@@ -209,7 +243,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
 
         private void HandleReceivedPacket(byte[] packet, IPEndPoint remoteEndPoint)
         {
-            if (!packetParser.TryParse(packet, validateChecksum, out var frame, out var failureReason))
+            if (!packetParser.TryParse(packet, packetDecodingProfile, validateChecksum, out var frame, out var failureReason))
             {
                 RecordDroppedPacket(packet, remoteEndPoint, failureReason);
                 return;

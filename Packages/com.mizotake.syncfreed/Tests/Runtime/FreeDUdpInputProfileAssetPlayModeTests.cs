@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Net;
 using System.Net.Sockets;
+using MizoTake.SyncFreeD.Core.Models;
+using MizoTake.SyncFreeD.Core.Outputs;
 using MizoTake.SyncFreeD.Networking;
 using MizoTake.SyncFreeD.ScriptableObjects;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
@@ -23,6 +25,8 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             profile.Value.JoinMulticastGroup = true;
             profile.Value.MulticastGroupIpAddress = "239.10.10.10";
             profile.Value.MulticastInterfaceAddress = "127.0.0.1";
+            profile.Value.PacketDecodingPreset = FreeDPacketDecodingPreset.BuiltInDeviceProfile;
+            profile.Value.BuiltInPacketDecodingProfileId = FreeDBuiltInPacketDecodingProfileIds.SonyBrcX1000Firmware210;
 
             var inputObject = new GameObject("Input Profile Source");
             inputObject.SetActive(false);
@@ -43,6 +47,10 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(inputSource.JoinMulticastGroup, Is.True);
             Assert.That(inputSource.MulticastGroupIpAddress, Is.EqualTo("239.10.10.10"));
             Assert.That(inputSource.MulticastInterfaceAddress, Is.EqualTo("127.0.0.1"));
+            Assert.That(inputSource.PacketDecodingPreset, Is.EqualTo(FreeDPacketDecodingPreset.BuiltInDeviceProfile));
+            Assert.That(inputSource.BuiltInPacketDecodingProfileId, Is.EqualTo(FreeDBuiltInPacketDecodingProfileIds.SonyBrcX1000Firmware210));
+            Assert.That(inputSource.Capabilities.HasFlag(CameraCapabilities.Position), Is.False);
+            Assert.That(inputSource.Capabilities.HasFlag(CameraCapabilities.Roll), Is.False);
             Assert.That(receiver.ListenPort, Is.EqualTo(41030));
             Assert.That(receiver.BindAddress, Is.EqualTo("127.0.0.1"));
 
@@ -101,6 +109,49 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Object.Destroy(loopbackProfile);
             Object.Destroy(inputObject);
             Object.Destroy(receiverObject);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ApplyProfile_InvalidCustomDecoderFailsClosedWithoutPoseCapabilities()
+        {
+            var profile = ScriptableObject.CreateInstance<FreeDUdpInputProfileAsset>();
+            profile.Value.PacketDecodingPreset = FreeDPacketDecodingPreset.Custom;
+            profile.Value.CustomPacketDecodingProfile.SensorWidthMm = 10d;
+            profile.Value.CustomPacketDecodingProfile.SensorHeightMm = 0d;
+            var inputObject = new GameObject("Invalid Custom Decoder Input");
+            inputObject.SetActive(false);
+            var inputSource = inputObject.AddComponent<FreeDInputSourceBehaviour>();
+
+            inputSource.SetInputProfileAsset(profile, true);
+
+            Assert.That(inputSource.Capabilities, Is.EqualTo(CameraCapabilities.None));
+            Assert.That(inputSource.LastProfileError, Is.Not.Empty);
+            Assert.That(inputSource.EffectivePacketDecodingProfileName, Is.EqualTo("Invalid Profile Raw Capture"));
+
+            Object.Destroy(profile);
+            Object.Destroy(inputObject);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ApplyProfile_UnknownBuiltInProfileFailsClosedWithoutDeviceAssumption()
+        {
+            var profile = ScriptableObject.CreateInstance<FreeDUdpInputProfileAsset>();
+            profile.Value.PacketDecodingPreset = FreeDPacketDecodingPreset.BuiltInDeviceProfile;
+            profile.Value.BuiltInPacketDecodingProfileId = "unknown-profile";
+            var inputObject = new GameObject("Unknown Built-In Decoder Input");
+            inputObject.SetActive(false);
+            var inputSource = inputObject.AddComponent<FreeDInputSourceBehaviour>();
+
+            inputSource.SetInputProfileAsset(profile, true);
+
+            Assert.That(inputSource.Capabilities, Is.EqualTo(CameraCapabilities.None));
+            Assert.That(inputSource.LastProfileError, Is.Not.Empty);
+            Assert.That(inputSource.EffectivePacketDecodingProfileName, Is.EqualTo("Invalid Profile Raw Capture"));
+
+            Object.Destroy(profile);
+            Object.Destroy(inputObject);
             yield return null;
         }
 

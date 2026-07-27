@@ -115,6 +115,7 @@ namespace MizoTake.SyncFreeD.Core.Sync
                 || !AreNearlyEqual(previous.Pose.Ymm, current.Pose.Ymm)
                 || !AreNearlyEqual(previous.Pose.Zmm, current.Pose.Zmm)
                 || !AreNearlyEqual(previous.Lens.FocalLengthMm, current.Lens.FocalLengthMm)
+                || !AreNearlyEqual(previous.Lens.EffectiveFocalLengthMm, current.Lens.EffectiveFocalLengthMm)
                 || !AreNearlyEqual(previous.Lens.FocusDistanceMeters, current.Lens.FocusDistanceMeters)
                 || !AreNearlyEqual(previous.Lens.IrisFNumber, current.Lens.IrisFNumber)
                 || !AreNearlyEqual(previous.Lens.ZoomNormalized, current.Lens.ZoomNormalized)

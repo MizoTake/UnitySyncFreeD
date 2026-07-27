@@ -1,3 +1,4 @@
+using MizoTake.SyncFreeD.Core.Outputs;
 using UnityEngine;
 
 namespace MizoTake.SyncFreeD.ScriptableObjects
@@ -18,5 +19,8 @@ namespace MizoTake.SyncFreeD.ScriptableObjects
         public bool JoinMulticastGroup;
         public string MulticastGroupIpAddress = "239.0.0.1";
         public string MulticastInterfaceAddress = string.Empty;
+        public FreeDPacketDecodingPreset PacketDecodingPreset = FreeDPacketDecodingPreset.RawUnsigned24;
+        public string BuiltInPacketDecodingProfileId = string.Empty;
+        public FreeDPacketDecodingProfile CustomPacketDecodingProfile = new FreeDPacketDecodingProfile();
     }
 }

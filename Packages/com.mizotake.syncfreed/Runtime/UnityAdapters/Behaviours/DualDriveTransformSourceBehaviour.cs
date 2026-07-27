@@ -87,12 +87,12 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             if (commandTransform == null)
             {
-                commandTransform = transform.Find("VISCA Command Target");
+                commandTransform = transform.Find("Command Target");
             }
 
             if (observedTransform == null)
             {
-                observedTransform = transform.Find("VISCA Observed Target");
+                observedTransform = transform.Find("Observed Target");
             }
 
             if (commandTransform == null)

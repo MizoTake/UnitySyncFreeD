@@ -9,6 +9,7 @@ namespace MizoTake.SyncFreeD.Core.Models
         public double FocusNormalized;
         public double IrisFNumber;
         public double FocalLengthMm;
+        public double EffectiveFocalLengthMm;
         public double FocusDistanceMeters;
     }
 }

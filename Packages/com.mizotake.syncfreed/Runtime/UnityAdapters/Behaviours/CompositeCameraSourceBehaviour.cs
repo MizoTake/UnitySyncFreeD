@@ -8,6 +8,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
     [DisallowMultipleComponent]
     public sealed class CompositeCameraSourceBehaviour : MonoBehaviour, ICameraFrameProvider, ILensDataSource
     {
+        private const CameraCapabilities LensCapabilities = CameraCapabilities.Zoom | CameraCapabilities.Focus | CameraCapabilities.Iris;
         [SerializeField] private string sourceId = "composite-source";
         [SerializeField] private int cameraId = 5;
         [SerializeField] private MonoBehaviour poseSourceBehaviour;
@@ -23,9 +24,11 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             get
             {
                 var capabilities = ResolvePoseSource()?.Capabilities ?? CameraCapabilities.None;
-                if (ResolveLensSource() != null)
+                var lensSource = ResolveLensSource();
+                if (lensSource != null)
                 {
-                    capabilities |= CameraCapabilities.Zoom | CameraCapabilities.Focus | CameraCapabilities.Iris;
+                    capabilities &= ~LensCapabilities;
+                    capabilities |= lensSourceBehaviour is ICameraFrameProvider lensFrameProvider ? lensFrameProvider.Capabilities & LensCapabilities : LensCapabilities;
                 }
 
                 return capabilities;
@@ -60,7 +63,7 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             var poseSource = ResolvePoseSource();
             var poseFrame = default(CameraObservedFrame);
             var hasPose = poseSource != null && poseSource.TryGetObservedFrame(out poseFrame);
-            var hasLens = TryGetLensState(out var lens);
+            var hasLens = TryResolveLensState(hasPose, poseFrame, out var lens, out var lensFrame, out var hasLensFrame);
             if (!hasPose && !hasLens)
             {
                 frame = default;
@@ -88,8 +91,10 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
                 Capabilities = Capabilities,
                 Pose = hasPose ? poseFrame.Pose : CapturePose(fallbackPoseTransform != null ? fallbackPoseTransform : transform),
                 Lens = hasLens ? lens : poseFrame.Lens,
-                Timing = hasPose ? poseFrame.Timing : new TimingState { FrameModulo16 = (ushort)(Time.frameCount & 0x0F) },
-                Validity = validity
+                Projection = hasLensFrame ? lensFrame.Projection : poseFrame.Projection,
+                Timing = hasLensFrame ? lensFrame.Timing : hasPose ? poseFrame.Timing : new TimingState { FrameModulo16 = (ushort)(Time.frameCount & 0x0F) },
+                Validity = validity,
+                RawFreeD = hasLensFrame ? lensFrame.RawFreeD : poseFrame.RawFreeD
             };
             return true;
         }
@@ -119,9 +124,9 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
         {
             ResolveReferences();
             var lensSource = ResolveLensSource();
-            if (lensSource != null && lensSource.TryGetLensState(out lens))
+            if (lensSource != null)
             {
-                return true;
+                return lensSource.TryGetLensState(out lens);
             }
 
             var poseSource = ResolvePoseSource();
@@ -132,6 +137,46 @@ namespace MizoTake.SyncFreeD.UnityAdapters.Behaviours
             }
 
             lens = default;
+            return false;
+        }
+
+        private bool TryResolveLensState(bool hasPose, in CameraObservedFrame poseFrame, out LensState lens, out CameraObservedFrame lensFrame, out bool hasLensFrame)
+        {
+            var lensSource = ResolveLensSource();
+            if (lensSource != null)
+            {
+                if (ReferenceEquals(lensSourceBehaviour, poseSourceBehaviour) && hasPose && poseFrame.Validity.IsLensValid)
+                {
+                    lens = poseFrame.Lens;
+                    lensFrame = poseFrame;
+                    hasLensFrame = true;
+                    return true;
+                }
+
+                if (lensSource.TryGetLensState(out lens))
+                {
+                    lensFrame = default;
+                    hasLensFrame = lensSourceBehaviour is ICameraFrameProvider lensFrameProvider && lensFrameProvider.TryGetObservedFrame(out lensFrame);
+                    return true;
+                }
+
+                lens = default;
+                lensFrame = default;
+                hasLensFrame = false;
+                return false;
+            }
+
+            if (hasPose && poseFrame.Validity.IsLensValid)
+            {
+                lens = poseFrame.Lens;
+                lensFrame = poseFrame;
+                hasLensFrame = true;
+                return true;
+            }
+
+            lens = default;
+            lensFrame = default;
+            hasLensFrame = false;
             return false;
         }
 

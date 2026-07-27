@@ -1,5 +1,6 @@
 namespace MizoTake.SyncFreeD.Core.Models
 {
+    [System.Serializable]
     public sealed class CurveDefinition
     {
         public CurveKeyframe[] Keys = new[] { new CurveKeyframe(0d, 0d), new CurveKeyframe(1d, 1d) };

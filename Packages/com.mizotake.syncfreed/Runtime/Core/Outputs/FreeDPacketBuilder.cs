@@ -10,7 +10,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
     {
         public const int PacketLength = 29;
         public const int PacketSize = PacketLength;
-        private const byte MessageType = 0xD1;
+        public const FreeDMessageType MessageType = FreeDMessageType.CameraPositionAndOrientation;
 
         public int Build(in CameraSyncState state, Span<byte> destination)
         {
@@ -20,7 +20,7 @@ namespace MizoTake.SyncFreeD.Core.Outputs
                 throw new ArgumentException("Destination must be at least 29 bytes.", nameof(destination));
             }
 
-            destination[0] = MessageType;
+            destination[0] = (byte)MessageType;
             destination[1] = (byte)Math.Clamp(state.CameraId, 0, 255);
             FreeDEncoding.WriteInt24BigEndian(destination.Slice(2, 3), FreeDEncoding.EncodeAngle24(state.Corrected.PanDeg));
             FreeDEncoding.WriteInt24BigEndian(destination.Slice(5, 3), FreeDEncoding.EncodeAngle24(state.Corrected.TiltDeg));

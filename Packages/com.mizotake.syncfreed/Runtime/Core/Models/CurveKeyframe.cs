@@ -1,5 +1,6 @@
 namespace MizoTake.SyncFreeD.Core.Models
 {
+    [System.Serializable]
     public struct CurveKeyframe
     {
         public double Time;

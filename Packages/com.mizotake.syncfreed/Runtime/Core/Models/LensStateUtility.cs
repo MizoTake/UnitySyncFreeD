@@ -12,6 +12,11 @@ namespace MizoTake.SyncFreeD.Core.Models
                 merged.FocalLengthMm = fallback.FocalLengthMm;
             }
 
+            if (!IsPositiveFinite(merged.EffectiveFocalLengthMm) && IsPositiveFinite(fallback.EffectiveFocalLengthMm))
+            {
+                merged.EffectiveFocalLengthMm = fallback.EffectiveFocalLengthMm;
+            }
+
             if (!IsPositiveFinite(merged.FocusDistanceMeters) && IsPositiveFinite(fallback.FocusDistanceMeters))
             {
                 merged.FocusDistanceMeters = fallback.FocusDistanceMeters;

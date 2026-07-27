@@ -1,8 +1,8 @@
 {
   "name": "com.mizotake.syncfreed",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "SyncFreeD",
-  "description": "Camera sync core and Free-D output package for Unity.",
+  "description": "Camera sync core with profile-driven Free-D input decoding and Free-D output for Unity.",
   "unity": "2022.3",
   "license": "MIT",
   "documentationUrl": "https://github.com/MizoTake/UnitySyncFreeD/blob/master/Packages/com.mizotake.syncfreed/Documentation~/Overview.md",

@@ -87,6 +87,7 @@ namespace MizoTake.SyncFreeD.Core.Sync
             corrected.ZoomNormalized = CorrectLinear(predictedLens.ZoomNormalized, observedLens.ZoomNormalized, tuning.SnapThresholdZoom, tuning.ZoomCorrectionGain);
             corrected.FocusNormalized = CorrectLinear(predictedLens.FocusNormalized, observedLens.FocusNormalized, tuning.SnapThresholdZoom, tuning.ZoomCorrectionGain);
             corrected.FocalLengthMm = CorrectLinear(predictedLens.FocalLengthMm, observedLens.FocalLengthMm, CalculateFocalLengthSnapThreshold(predictedLens, observedLens, tuning.SnapThresholdZoom), tuning.ZoomCorrectionGain);
+            corrected.EffectiveFocalLengthMm = CorrectLinear(predictedLens.EffectiveFocalLengthMm, observedLens.EffectiveFocalLengthMm, CalculateEffectiveFocalLengthSnapThreshold(predictedLens, observedLens, tuning.SnapThresholdZoom), tuning.ZoomCorrectionGain);
             corrected.FocusDistanceMeters = CorrectLinear(predictedLens.FocusDistanceMeters, observedLens.FocusDistanceMeters, System.Math.Max(0.001d, tuning.SnapThresholdZoom), tuning.ZoomCorrectionGain);
             corrected.IrisFNumber = observedLens.IrisFNumber != 0d ? observedLens.IrisFNumber : predictedLens.IrisFNumber;
             return LensStateUtility.MergePhysicalValues(corrected, predictedLens);
@@ -106,6 +107,12 @@ namespace MizoTake.SyncFreeD.Core.Sync
         private static double CalculateFocalLengthSnapThreshold(in LensState predictedLens, in LensState observedLens, double snapThresholdZoom)
         {
             var maxFocalLength = System.Math.Max(System.Math.Abs(predictedLens.FocalLengthMm), System.Math.Abs(observedLens.FocalLengthMm));
+            return System.Math.Max(0.001d, maxFocalLength * snapThresholdZoom);
+        }
+
+        private static double CalculateEffectiveFocalLengthSnapThreshold(in LensState predictedLens, in LensState observedLens, double snapThresholdZoom)
+        {
+            var maxFocalLength = System.Math.Max(System.Math.Abs(predictedLens.EffectiveFocalLengthMm), System.Math.Abs(observedLens.EffectiveFocalLengthMm));
             return System.Math.Max(0.001d, maxFocalLength * snapThresholdZoom);
         }
 

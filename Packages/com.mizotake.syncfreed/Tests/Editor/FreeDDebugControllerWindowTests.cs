@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Linq;
+using MizoTake.SyncFreeD.Core.Outputs;
 using MizoTake.SyncFreeD.Editor.Support;
 using MizoTake.SyncFreeD.Editor.Windows;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
@@ -56,6 +57,7 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             SetPrivateField(inputSource, "joinMulticastGroup", false);
             SetPrivateField(inputSource, "bindAddress", string.Empty);
             SetPrivateField(inputSource, "listenPort", port);
+            SetPrivateField(inputSource, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);
             EnsureInputSourceBound(inputSource);
@@ -103,6 +105,7 @@ namespace MizoTake.SyncFreeD.Tests.Editor
             SetPrivateField(inputSource, "joinMulticastGroup", true);
             SetPrivateField(inputSource, "multicastGroupIpAddress", group);
             SetPrivateField(inputSource, "listenPort", port);
+            SetPrivateField(inputSource, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);
             EnsureInputSourceBound(inputSource);

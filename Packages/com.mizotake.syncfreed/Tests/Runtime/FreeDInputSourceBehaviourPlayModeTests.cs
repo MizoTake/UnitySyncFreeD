@@ -2,6 +2,7 @@ using System.Collections;
 using System.Net.Sockets;
 using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.Core.Outputs;
+using MizoTake.SyncFreeD.ScriptableObjects;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEngine;
@@ -18,6 +19,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             var receiverObject = new GameObject("FreeD Input Receiver");
             var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
             SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);
 
@@ -40,6 +42,37 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
         }
 
         [UnityTest]
+        public IEnumerator Update_RawUnsigned24AcceptsAllZeroPacketWithoutEnablingLensApplication()
+        {
+            const int port = 41027;
+            var profile = ScriptableObject.CreateInstance<FreeDUdpInputProfileAsset>();
+            profile.Value.ListenPort = port;
+            profile.Value.BindAddress = "127.0.0.1";
+            profile.Value.PacketDecodingPreset = FreeDPacketDecodingPreset.RawUnsigned24;
+            var receiverObject = new GameObject("FreeD Raw Zero Lens Receiver");
+            receiverObject.SetActive(false);
+            var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
+            receiver.SetInputProfileAsset(profile, true);
+            receiverObject.SetActive(true);
+
+            using (var udpClient = new UdpClient())
+            {
+                udpClient.Send(CreatePacket(10, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0), FreeDPacketBuilder.PacketLength, "127.0.0.1", port);
+            }
+
+            yield return WaitUntilReceived(receiver, 30);
+
+            Assert.That(receiver.TryGetLensState(out _), Is.False);
+            Assert.That(receiver.TryGetObservedFrame(out var frame), Is.True);
+            Assert.That(frame.Capabilities, Is.EqualTo(CameraCapabilities.None));
+            Assert.That(frame.RawFreeD.Zoom, Is.Zero);
+            Assert.That(frame.RawFreeD.Focus, Is.Zero);
+
+            Object.Destroy(profile);
+            Object.Destroy(receiverObject);
+        }
+
+        [UnityTest]
         public IEnumerator Update_RaisesObservedFrameUpdatedForEachAcceptedPacket()
         {
             const int port = 41026;
@@ -53,6 +86,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
                 lastUpdatedFrame = frame;
             };
             SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);
 
@@ -79,6 +113,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             var receiverObject = new GameObject("FreeD Multicast Receiver");
             var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
             SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             SetPrivateField(receiver, "joinMulticastGroup", true);
             SetPrivateField(receiver, "multicastGroupIpAddress", group);
             receiverObject.SetActive(false);
@@ -107,6 +142,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             var receiverOneObject = new GameObject("FreeD Input Receiver One");
             var receiverOne = receiverOneObject.AddComponent<FreeDInputSourceBehaviour>();
             SetPrivateField(receiverOne, "listenPort", port);
+            SetPrivateField(receiverOne, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             SetPrivateField(receiverOne, "cameraIdFilter", 7);
             receiverOneObject.SetActive(false);
             receiverOneObject.SetActive(true);
@@ -114,6 +150,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             var receiverTwoObject = new GameObject("FreeD Input Receiver Two");
             var receiverTwo = receiverTwoObject.AddComponent<FreeDInputSourceBehaviour>();
             SetPrivateField(receiverTwo, "listenPort", port);
+            SetPrivateField(receiverTwo, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             SetPrivateField(receiverTwo, "cameraIdFilter", 8);
             receiverTwoObject.SetActive(false);
             receiverTwoObject.SetActive(true);
@@ -145,6 +182,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             var receiverObject = new GameObject("FreeD Input Drop Reason Receiver");
             var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
             SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);
             var packet = CreatePacket(7, 15f, -5f, 2f, 1000d, 2000d, 3000d, 35d, 4d, 2.8d, 6);
@@ -173,6 +211,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             var receiverObject = new GameObject("FreeD Input Camera Filter Drop Receiver");
             var receiver = receiverObject.AddComponent<FreeDInputSourceBehaviour>();
             SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             SetPrivateField(receiver, "cameraIdFilter", 8);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);
@@ -204,6 +243,7 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             receiverObject.transform.position = new Vector3(1f, 2f, 3f);
             receiverObject.transform.rotation = Quaternion.Euler(0f, 25f, 0f);
             SetPrivateField(receiver, "listenPort", port);
+            SetPrivateField(receiver, "packetDecodingPreset", FreeDPacketDecodingPreset.SyncFreeDPhysicalV1);
             SetPrivateField(receiver, "commandSourceBehaviour", commandSource);
             receiverObject.SetActive(false);
             receiverObject.SetActive(true);

@@ -1,4 +1,5 @@
 using System.Collections;
+using MizoTake.SyncFreeD.Core.Models;
 using MizoTake.SyncFreeD.UnityAdapters.Behaviours;
 using NUnit.Framework;
 using UnityEngine;
@@ -138,6 +139,44 @@ namespace MizoTake.SyncFreeD.Tests.Runtime
             Assert.That(frame.CameraId, Is.EqualTo(21));
             Assert.That(frame.Validity.IsTrackingValid, Is.True);
             Assert.That(frame.Validity.IsLensValid, Is.True);
+
+            Object.Destroy(root);
+        }
+
+        [UnityTest]
+        public IEnumerator TryGetObservedFrame_PreservesSelectedLensSourceProjectionCapabilitiesAndRawFreeD()
+        {
+            var root = new GameObject("Composite Free-D Lens Metadata");
+            root.SetActive(false);
+            var tracker = root.AddComponent<TrackerCameraSourceBehaviour>();
+            var lensSource = root.AddComponent<FreeDDrivenCameraTestProvider>();
+            lensSource.Frame = new CameraObservedFrame
+            {
+                SourceId = "free-d-lens",
+                CameraId = 7,
+                Capabilities = CameraCapabilities.Zoom | CameraCapabilities.Focus,
+                Pose = new PoseState { TimestampTicks = 1L },
+                Lens = new LensState { FocalLengthMm = 18.6d, FocusDistanceMeters = 2d },
+                Projection = new CameraProjectionState { SensorWidthMm = 11.7584319d, SensorHeightMm = 6.6141179d },
+                Timing = new TimingState { FrameModulo16 = 9 },
+                Validity = new ValidityState { IsLensValid = true },
+                RawFreeD = new FreeDRawPacketValues { Zoom = 0x1800, Focus = 0x4000, UserData = 0x9234 }
+            };
+            var composite = root.AddComponent<CompositeCameraSourceBehaviour>();
+            SetPrivateField(composite, "poseSourceBehaviour", tracker);
+            SetPrivateField(composite, "lensSourceBehaviour", lensSource);
+            root.SetActive(true);
+
+            yield return null;
+
+            Assert.That(composite.TryGetObservedFrame(out var frame), Is.True);
+            Assert.That(frame.Capabilities.HasFlag(CameraCapabilities.Zoom), Is.True);
+            Assert.That(frame.Capabilities.HasFlag(CameraCapabilities.Focus), Is.True);
+            Assert.That(frame.Capabilities.HasFlag(CameraCapabilities.Iris), Is.False);
+            Assert.That(frame.Projection.SensorHeightMm, Is.EqualTo(6.6141179d).Within(0.000001d));
+            Assert.That(frame.RawFreeD.Zoom, Is.EqualTo(0x1800));
+            Assert.That(frame.RawFreeD.Focus, Is.EqualTo(0x4000));
+            Assert.That(frame.Timing.FrameModulo16, Is.EqualTo(9));
 
             Object.Destroy(root);
         }

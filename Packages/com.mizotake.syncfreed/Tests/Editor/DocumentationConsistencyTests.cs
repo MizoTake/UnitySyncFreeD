@@ -14,6 +14,16 @@ namespace MizoTake.SyncFreeD.Tests.Editor
         }
 
         [Test]
+        public void FreeDReceiveDocumentation_UsesMessageAndCapabilityTermsForRigSetup()
+        {
+            var overview = ReadProjectFile("Packages/com.mizotake.syncfreed/Documentation~/Overview.md");
+            var sample = ReadProjectFile("Packages/com.mizotake.syncfreed/Samples~/FreeDReceiveSample/README.md");
+            Assert.That(overview, Does.Contain("D1はcamera position / orientation、D2はsystem status"));
+            Assert.That(sample, Does.Contain("## Capability-Based D1 PTZ Rig"));
+            Assert.That(sample, Does.Not.Contain("## Sony BRC-X1000 Rig"));
+        }
+
+        [Test]
         public void Overview_ListsMaintainedFreeDSamples()
         {
             var content = ReadProjectFile("Packages/com.mizotake.syncfreed/Documentation~/Overview.md");
